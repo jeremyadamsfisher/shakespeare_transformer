@@ -9,9 +9,10 @@ class GptConfig(BaseModel):
     vocab_size = 65
     n_heads = 4
     n_gpt_blocks = 3
-    context_window_size = 32
     test_train_split = 0.1
     lr = 1e-3
+    n_layers = 3
+    n_epochs = 1
 
 
 gpt_small = GptConfig()

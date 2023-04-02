@@ -3,7 +3,7 @@ import math
 import lightning.pytorch as pl
 import torch
 import torch.nn as nn
-from einops import rearrange
+from einops import rearrange, repeat
 from torch.nn import functional as F
 
 
@@ -16,7 +16,7 @@ class LM(pl.LightningModule):
         xb, yb = batch
         logits = self.forward(xb)
         return F.cross_entropy(
-            rearrange(logits, "b t c -> b (t c)"),
+            rearrange(logits, "b t c -> (b t) c"),
             rearrange(yb, "b t -> (b t)"),
         )
 
@@ -64,10 +64,11 @@ class Attention(nn.Module):
     def __init__(self, config):
         super().__init__()
         head_size = config.n_embed // config.n_heads
-        self.key = nn.Linear(self, config.n_embed, head_size)
-        self.query = nn.Linear(self, config.n_embed, head_size)
-        self.value = nn.Linear(self, config.n_embed, head_size)
+        self.key = nn.Linear(config.n_embed, head_size)
+        self.query = nn.Linear(config.n_embed, head_size)
+        self.value = nn.Linear(config.n_embed, head_size)
         self.dropout = nn.Dropout(config.p_dropout)
+        self.config = config
 
     def get_attention_mask(self, T):
         """Get an attention mask for a sequence of length T
@@ -108,7 +109,8 @@ class Attention(nn.Module):
         affinity_scores = self.dropout(affinity_scores)
         # Convert to a probability distribution
         affinity = F.softmax(affinity_scores, dim=-1)
-        assert affinity.shape == (B, T, T) and (affinity.sum(dim=-1) == 1).all()
+        assert affinity.shape == (B, T, T)
+        assert torch.allclose(affinity.sum(axis=-1), torch.ones((B, T)))
         # Consider the leftmost output token, which is the vector of dot products
         # of the first row of attention and all the value channel columns for all
         # tokens. Because all the logits are zero in the first row of attention
@@ -122,17 +124,15 @@ class Attention(nn.Module):
 class MSA(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.heads = nn.ModuleList(
-            [Attention(config) for _ in range(self.config.n_heads)]
-        )
+        self.heads = nn.ModuleList([Attention(config) for _ in range(config.n_heads)])
         self.W = nn.Linear(config.n_embed, config.n_embed)
 
-    def foward(self, x):
+    def forward(self, x):
         # project the input logits into n orthogonal subspaces
         # within which attention is computed
         x = torch.stack([head(x) for head in self.heads])
         # concatenate the attention-transformed subspaces
-        x = rearrange(x, "b t h d -> b t (h d)")
+        x = rearrange(x, "h b t d -> b t (h d)")
         # reweight the attention-transformed subspaces, see section 3.3
         return self.W(x)
 
@@ -140,10 +140,10 @@ class MSA(nn.Module):
 class GptBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.norm_a = nn.LayerNorm(self.config.n_embed)
+        self.norm_a = nn.LayerNorm(config.n_embed)
         self.dropout_a = nn.Dropout(config.p_dropout)
         self.msa = MSA(config)
-        self.norm_b = nn.LayerNorm(self.config.n_embed)
+        self.norm_b = nn.LayerNorm(config.n_embed)
         self.ffn = nn.Sequential(
             nn.Linear(config.n_embed, 4 * config.n_embed),
             nn.ReLU(),
@@ -164,20 +164,21 @@ class Gpt(LM):
     def __init__(self, config):
         super().__init__(config)
         self.token_embedding = nn.Embedding(config.vocab_size, config.n_embed)
-        self.position_embedding = nn.Embedding(
-            config.context_window_size, config.n_embed
-        )
+        self.position_embedding = nn.Embedding(config.block_size, config.n_embed)
         self.attention_blocks = nn.Sequential(
             *[GptBlock(config) for _ in range(config.n_layers)]
         )
         self.post_attention_norm = nn.LayerNorm(config.n_embed)
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size)
+        self.config = config
 
     def forward(self, idxs):
         B, T = idxs.shape
         token_embeddings = self.token_embedding(idxs)
         assert token_embeddings.shape == (B, T, self.config.n_embed)
-        position_embedddings = self.position_embedding(idxs)
+        pos_idxs = torch.arange(T, device=idxs.device)
+        position_embedddings = self.position_embedding(pos_idxs)
+        position_embedddings = repeat(position_embedddings, "t c -> b t c", b=B)
         assert position_embedddings.shape == (B, T, self.config.n_embed)
         x = token_embeddings + position_embedddings
         assert x.shape == (B, T, self.config.n_embed)

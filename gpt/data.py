@@ -63,7 +63,14 @@ class ShakespeareDataModule(pl.LightningDataModule):
         self.X_tst = CharDataset(self.encode(corpus_tst), self.config)
 
     def train_dataloader(self):
-        return DataLoader(self.X_trn, batch_size=self.config.batch_size, shuffle=True)
+        return DataLoader(
+            self.X_trn,
+            batch_size=self.config.batch_size,
+            shuffle=True,
+            num_workers=self.workers,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.X_tst, batch_size=self.config.batch_size)
+        return DataLoader(
+            self.X_tst, batch_size=self.config.batch_size, num_workers=self.workers
+        )
