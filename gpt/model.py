@@ -82,7 +82,7 @@ class Attention(nn.Module):
             torch.tensor([[0,1],
                           [0,0]])
         """
-        return torch.tril(torch.ones((T, T), device=self.device)) == 0
+        return torch.tril(torch.ones((T, T))) == 0
 
     def forward(self, x):
         B, T, C = x.shape
@@ -108,13 +108,17 @@ class Attention(nn.Module):
         # Recall that e^−∞ = 0. By setting the weights in the upper, left triangle
         # of the attention to −∞, the softmax allocates those weights to the past
         # and present tokens.
-        affinity_scores.masked_fill(self.get_attention_mask(T), -float("inf"))
+        affinity_scores.masked_fill(
+            self.get_attention_mask(T).to(x.device), -float("inf")
+        )
         # Randomly drop some of the affinities to encourage regularization
         affinity_scores = self.dropout(affinity_scores)
         # Convert to a probability distribution
         affinity = F.softmax(affinity_scores, dim=-1)
         assert affinity.shape == (B, T, T)
-        assert torch.allclose(affinity.sum(axis=-1), torch.ones((B, T)))
+        assert torch.allclose(
+            affinity.sum(axis=-1), torch.ones((B, T), device=x.device)
+        )
         # Consider the leftmost output token, which is the vector of dot products
         # of the first row of attention and all the value channel columns for all
         # tokens. Because all the logits are zero in the first row of attention
@@ -122,7 +126,9 @@ class Attention(nn.Module):
         # value column. For the second output token, its the same matrix operation
         # but the attention can be split between the first and second value columns.
         # And so on.
-        return affinity @ v
+        result = affinity @ v
+        assert result.shape == (B, T, C)
+        return result
 
 
 class MSA(nn.Module):
