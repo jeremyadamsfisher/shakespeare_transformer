@@ -35,23 +35,27 @@ class LM(pl.LightningModule):
 
     @torch.no_grad()
     def generate(self, max_new_tokens: int = 50):
-        idxs = torch.zeros(
-            shape=(1, 1, self.config.n_embed), dtype=torch.long, device=self.device
-        )
+        idxs = torch.zeros((1, 1), dtype=torch.long, device=self.device)
         for _ in range(max_new_tokens):
-            # Our language model expects a fixed size input, so if the input is
+            # Our position embedding has a maximum length, so if the input is
             # longer than the block size, then crop it.
-            idxs_cropped = idxs[:, -self.config.block_size :]  # (B,T)
+            idxs_cropped = idxs[:, -self.config.block_size :]
+            assert idxs_cropped.shape[0] == 1
+            assert idxs_cropped.shape[1] <= self.config.block_size
             # Get the model output
-            logits = self(idxs_cropped)  # (B,T,C)
+            logits = self(idxs_cropped)
+            assert logits.shape[0] == 1
+            assert idxs_cropped.shape[1] <= self.config.block_size
+            assert logits.shape[2] == self.config.vocab_size
             # The model predicts logits for the probabilities for all the tokens,
             # i.e.: a shifted version of the input with the new token in the final
             # "time" position. We only need this last position.
-            logits = logits[:, -1, :]  # (B,C)
+            logits = logits[:, -1, :]
+            assert logits.shape == (1, self.config.vocab_size)
             # Use these logits to create a probability distribution and
             # sample from it.
-            probs = F.softmax(logits, dim=-1)  # (B)
-            idx_next = torch.multinomial(probs, num_samples=1)  # (B,1)
+            probs = F.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
             # Finally, append it to the current sequence
             idxs = torch.cat([idxs, idx_next], dim=1)  # (B,T+1)
             # ...and repeat
@@ -132,7 +136,7 @@ class MSA(nn.Module):
         # within which attention is computed
         x = torch.stack([head(x) for head in self.heads])
         # concatenate the attention-transformed subspaces
-        x = rearrange(x, "h b t d -> b t (h d)")
+        x = rearrange(x, "h b t c -> b t (h c)")
         # reweight the attention-transformed subspaces, see section 3.3
         return self.W(x)
 
@@ -171,6 +175,7 @@ class Gpt(LM):
         self.post_attention_norm = nn.LayerNorm(config.n_embed)
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size)
         self.config = config
+        self.save_hyperparameters(config.dict())
 
     def forward(self, idxs):
         B, T = idxs.shape
