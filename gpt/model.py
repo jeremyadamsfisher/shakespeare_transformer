@@ -82,7 +82,7 @@ class Attention(nn.Module):
             torch.tensor([[0,1],
                           [0,0]])
         """
-        return torch.tril(torch.ones((T, T))) == 0
+        return torch.tril(torch.ones((T, T), device=self.device)) == 0
 
     def forward(self, x):
         B, T, C = x.shape
