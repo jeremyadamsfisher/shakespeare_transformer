@@ -8,6 +8,8 @@ requirements = [
     "typer",
     "rich",
     "shellingham",
+    "wandb",
+    "loguru",
 ]
 
 setup(
