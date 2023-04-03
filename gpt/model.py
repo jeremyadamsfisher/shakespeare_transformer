@@ -105,7 +105,7 @@ class Attention(nn.Module):
         # we want each output token to be a mix of the input tokens. So we
         # normalize by the square root of the output dimensions.
         affinity_scores /= math.sqrt(C)
-        # Recall that e^−∞ = 0. By setting the weights in the upper, left triangle
+        # Recall that e^−∞ = 0. By setting the weights in the upper, right triangle
         # of the attention to −∞, the softmax allocates those weights to the past
         # and present tokens.
         affinity_scores = affinity_scores.masked_fill(
@@ -118,7 +118,7 @@ class Attention(nn.Module):
         assert affinity.shape == (B, T, T)
         assert torch.allclose(
             affinity.sum(axis=-1), torch.ones((B, T), device=x.device)
-        )
+        ), breakpoint()
         # Consider the leftmost output token, which is the vector of dot products
         # of the first row of attention and all the value channel columns for all
         # tokens. Because all the logits are zero in the first row of attention
@@ -136,7 +136,6 @@ class MSA(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Attention(config) for _ in range(config.n_heads)])
         self.W = nn.Linear(config.n_embed, config.n_embed)
-        self.config = config
 
     def forward(self, x):
         B, T, C = x.shape
