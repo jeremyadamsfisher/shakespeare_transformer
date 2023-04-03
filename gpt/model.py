@@ -1,13 +1,13 @@
 import math
 
-import lightning.pytorch as pl
+import lightning.pytorch as L
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
 from torch.nn import functional as F
 
 
-class LM(pl.LightningModule):
+class LM(L.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -136,13 +136,16 @@ class MSA(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Attention(config) for _ in range(config.n_heads)])
         self.W = nn.Linear(config.n_embed, config.n_embed)
+        self.config = config
 
     def forward(self, x):
+        B, T, C = x.shape
         # project the input logits into n orthogonal subspaces
         # within which attention is computed
         x = torch.stack([head(x) for head in self.heads], dim=0)
         # concatenate the attention-transformed subspaces
-        x = rearrange(x, "h b t c -> b t (h c)")
+        x = rearrange(x, "h b t hs -> b t (h hs)")
+        assert x.shape == (B, T, C)
         # reweight the attention-transformed subspaces, see section 3.3
         return self.W(x)
 

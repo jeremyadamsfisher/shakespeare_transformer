@@ -6,5 +6,8 @@ help:
 install:  ## install training library
 	@pip install -q -e .
 
-run: install  ## run training
-	@train-gpt --use-wandb
+run: install  ## run training, small model
+	@train-gpt
+
+run_large: install   ## run training, large model
+	@train-gpt --large

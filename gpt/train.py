@@ -2,6 +2,7 @@ import tempfile
 
 import lightning.pytorch as pl
 import torch
+from loguru import logger
 from pytorch_lightning.loggers import WandbLogger
 
 import wandb
@@ -23,6 +24,7 @@ class LogGenerationPeriodically(pl.Callback):
                 columns = ["generation"]
                 data = [[output]]
                 self.wandb_logger.log_text("trn/generation", columns=columns, data=data)
+            logger.info("generation: {}", output)
 
 
 def train(model, config: GptConfig, log_periodicity=1000):
