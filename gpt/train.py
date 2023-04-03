@@ -1,5 +1,4 @@
 import lightning.pytorch as pl
-from loguru import logger
 
 from gpt.config import GptConfig
 from gpt.data import ShakespeareDataModule
@@ -14,8 +13,7 @@ class LogGenerationPeriodically(pl.Callback):
         if batch_idx % self.log_periodicity == 0:
             output = model.generate()
             output = self.decoder(output).replace("\n", " ")
-            msg = "TRN batch {:05}, generation: {}".format(batch_idx, output)
-            logger.info(msg)
+            self.log("trn/generation", output)
 
 
 def train(model, config: GptConfig, log_periodicity=1000, pl_train_kwargs=None):

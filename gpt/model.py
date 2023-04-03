@@ -140,7 +140,7 @@ class MSA(nn.Module):
     def forward(self, x):
         # project the input logits into n orthogonal subspaces
         # within which attention is computed
-        x = torch.stack([head(x) for head in self.heads])
+        x = torch.stack([head(x) for head in self.heads], dim=0)
         # concatenate the attention-transformed subspaces
         x = rearrange(x, "h b t c -> b t (h c)")
         # reweight the attention-transformed subspaces, see section 3.3
