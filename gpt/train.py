@@ -34,7 +34,11 @@ def train(model, config: GptConfig, log_periodicity=1000):
         logger = WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, logger)
         trainer = pl.Trainer(
-            max_epochs=config.n_epochs, callbacks=[log_cb], logger=[logger]
+            max_epochs=config.n_epochs,
+            callbacks=[log_cb],
+            logger=[logger],
+            val_check_interval=0.1,
+            precision="16-mixed",
         )
         trainer.fit(model, dm)
         with tempfile.NamedTemporaryFile(suffix=".ckpt") as f:
