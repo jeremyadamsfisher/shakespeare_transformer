@@ -18,10 +18,12 @@ class LogGenerationPeriodically(pl.Callback):
             logger.info(msg)
 
 
-def train(model, config: GptConfig, pl_train_kwargs):
+def train(model, config: GptConfig, log_periodicity=1000, pl_train_kwargs=None):
+    if pl_train_kwargs is None:
+        pl_train_kwargs = {}
     dm = ShakespeareDataModule(config, workers=-1)
     dm.setup()
-    log_cb = LogGenerationPeriodically(decoder=dm.decode)
+    log_cb = LogGenerationPeriodically(dm.decode, log_periodicity)
     trainer = pl.Trainer(
         max_epochs=config.n_epochs, callbacks=[log_cb], **pl_train_kwargs
     )
