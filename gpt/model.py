@@ -108,7 +108,7 @@ class Attention(nn.Module):
         # Recall that e^−∞ = 0. By setting the weights in the upper, left triangle
         # of the attention to −∞, the softmax allocates those weights to the past
         # and present tokens.
-        affinity_scores.masked_fill(
+        affinity_scores = affinity_scores.masked_fill(
             self.get_attention_mask(T).to(x.device), -float("inf")
         )
         # Randomly drop some of the affinities to encourage regularization
