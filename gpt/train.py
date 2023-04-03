@@ -13,7 +13,7 @@ class LogGenerationPeriodically(pl.Callback):
         if batch_idx % self.log_periodicity == 0:
             output = model.generate()
             output = self.decoder(output).replace("\n", " ")
-            self.log("trn/generation", output)
+            self.log.log_text("trn/generation", output)
 
 
 def train(model, config: GptConfig, log_periodicity=1000, pl_train_kwargs=None):
