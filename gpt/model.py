@@ -67,10 +67,10 @@ class LM(pl.LightningModule):
 class Attention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        head_size = config.n_embed // config.n_heads
-        self.key = nn.Linear(config.n_embed, head_size)
-        self.query = nn.Linear(config.n_embed, head_size)
-        self.value = nn.Linear(config.n_embed, head_size)
+        self.head_size = config.n_embed // config.n_heads
+        self.key = nn.Linear(config.n_embed, self.head_size)
+        self.query = nn.Linear(config.n_embed, self.head_size)
+        self.value = nn.Linear(config.n_embed, self.head_size)
         self.dropout = nn.Dropout(config.p_dropout)
         self.config = config
 
@@ -127,7 +127,7 @@ class Attention(nn.Module):
         # but the attention can be split between the first and second value columns.
         # And so on.
         result = affinity @ v
-        assert result.shape == (B, T, C)
+        assert result.shape == (B, T, self.head_size)
         return result
 
 
