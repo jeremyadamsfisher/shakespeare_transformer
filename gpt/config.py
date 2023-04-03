@@ -20,7 +20,13 @@ class GptConfig(BaseModel):
 
 
 gpt_small = GptConfig(
-    batch_size=16, block_size=32, n_embed=64, n_heads=4, n_layers=4, p_dropout=0.0
+    batch_size=1024,
+    block_size=32,
+    n_embed=64,
+    n_heads=4,
+    n_layers=4,
+    p_dropout=0.0,
+    lr=1e-2,
 )
 
 gpt_large = GptConfig(
