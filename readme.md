@@ -7,4 +7,4 @@ It does have some nice features:
 - pytorch lightning to keep things organized
 - wandb integration for experimental tracking
 
-Also, check out the blog post where I delve into [all the things I was wrong about regarding self-attention](https://www.jeremyafisher.com/posts/why-does-openai-charge-more-for-longer-sequences/). Writing this codebase inspired the blog post.
+Also, check out the blog post where I delve into [all the things I was wrong about regarding self-attention](one_cycle_scheduler). Writing this codebase inspired the blog post.
