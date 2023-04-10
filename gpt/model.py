@@ -15,6 +15,8 @@ class LM(L.LightningModule):
     def step(self, batch):
         xb, yb = batch
         logits = self.forward(xb)
+        B, T, C = logits.shape
+        assert C == self.config.vocab_size
         return F.cross_entropy(
             rearrange(logits, "b t c -> (b t) c"),
             rearrange(yb, "b t -> (b t)"),
@@ -27,11 +29,20 @@ class LM(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         loss = self.step(batch)
-        self.log("tst_loss", loss, on_step=True)
+        self.log("tst_loss", loss)
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.config.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.config.lr)
+        if self.config.one_cycle_scheduler is False:
+            return optimizer
+        else:
+            scheduler = torch.optim.lr_scheduler.OneCycleLR(
+                optimizer,
+                max_lr=self.config.lr,
+                total_steps=self.trainer.estimated_stepping_batches,
+            )
+            return [optimizer], [scheduler]
 
     @torch.no_grad()
     def generate(self, max_new_tokens: int = 50):
@@ -60,7 +71,7 @@ class LM(L.LightningModule):
             idxs = torch.cat([idxs, idx_next], dim=1)  # (B,T+1)
             # ...and repeat
         # strip the new line and remove singleton dimension
-        idxs = idxs[..., 1:].squeeze()
+        idxs = idxs[0, 1:]
         return idxs
 
 
@@ -104,7 +115,7 @@ class Attention(nn.Module):
         # Softmax will quickly converge on producing one-hot vectors, whereas
         # we want each output token to be a mix of the input tokens. So we
         # normalize by the square root of the output dimensions.
-        affinity_scores /= math.sqrt(C)
+        affinity_scores /= math.sqrt(self.head_size)
         # Recall that e^−∞ = 0. By setting the weights in the upper, right triangle
         # of the attention to −∞, the softmax allocates those weights to the past
         # and present tokens.
@@ -187,6 +198,15 @@ class Gpt(LM):
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size)
         self.config = config
         self.save_hyperparameters(config.dict())
+        self.apply(self._init_weights)
+
+    def init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, idxs):
         B, T = idxs.shape

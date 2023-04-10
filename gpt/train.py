@@ -1,6 +1,6 @@
 import tempfile
 
-import lightning.pytorch as pl
+import lightning.pytorch as L
 import torch
 from loguru import logger
 from pytorch_lightning.loggers import WandbLogger
@@ -10,8 +10,8 @@ from gpt.config import GptConfig
 from gpt.data import ShakespeareDataModule
 
 
-class LogGenerationPeriodically(pl.Callback):
-    def __init__(self, decoder, log_periodicity=1000, wandb_logger=None):
+class LogGenerationPeriodically(L.Callback):
+    def __init__(self, decoder, log_periodicity, wandb_logger=None):
         self.log_periodicity = log_periodicity
         self.decoder = decoder
         self.wandb_logger = wandb_logger
@@ -27,15 +27,15 @@ class LogGenerationPeriodically(pl.Callback):
             logger.info("generation: {}", output)
 
 
-def train(model, config: GptConfig, log_periodicity=1000):
+def train(model, config: GptConfig, log_periodicity=100):
     with wandb.init(project="gpt-shakespeare") as run:
         dm = ShakespeareDataModule(config, workers=-1)
         dm.setup()
         logger = WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, logger)
-        trainer = pl.Trainer(
+        trainer = L.Trainer(
             max_epochs=config.n_epochs,
-            callbacks=[log_cb],
+            callbacks=[log_cb, L.callbacks.EarlyStopping("tst_loss")],
             logger=[logger],
             val_check_interval=0.1,
             precision="16-mixed",

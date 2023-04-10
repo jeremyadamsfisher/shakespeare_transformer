@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -17,18 +19,41 @@ class GptConfig(BaseModel):
     p_dropout: float = 0.0
     lr: float = 1e-3
     test_train_split: float = 0.1
+    one_cycle_scheduler: Optional[bool] = False
 
 
 gpt_small = GptConfig(
-    batch_size=1024,
+    batch_size=512,
     block_size=32,
     n_embed=64,
     n_heads=4,
     n_layers=4,
     p_dropout=0.0,
     lr=1e-2,
+    n_epochs=4,
+)
+
+gpt_small_one_cycle = gpt_small.copy()
+gpt_small_one_cycle.one_cycle_scheduler = True
+
+gpt_medium = GptConfig(
+    batch_size=256,
+    block_size=128,
+    n_embed=384,
+    n_heads=6,
+    n_layers=6,
+    p_dropout=0.2,
+    lr=3e-4,
+    n_epochs=10,
 )
 
 gpt_large = GptConfig(
-    batch_size=64, block_size=256, n_embed=384, n_heads=6, n_layers=6, p_dropout=0.2
+    batch_size=64,
+    block_size=256,
+    learning_rate=3e-4,
+    n_embed=384,
+    n_head=6,
+    n_layer=6,
+    p_dropout=0.2,
+    n_epochs=10,
 )
