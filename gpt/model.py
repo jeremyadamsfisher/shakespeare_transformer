@@ -12,6 +12,14 @@ class LM(L.LightningModule):
         super().__init__()
         self.config = config
 
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
     def step(self, batch):
         xb, yb = batch
         logits = self.forward(xb)
@@ -45,8 +53,9 @@ class LM(L.LightningModule):
             return [optimizer], [scheduler]
 
     @torch.no_grad()
-    def generate(self, max_new_tokens: int = 50):
-        idxs = torch.zeros((1, 1), dtype=torch.long, device=self.device)
+    def generate(self, idxs=None, max_new_tokens: int = 50):
+        if idxs is None:
+            idxs = torch.zeros((1, 1), dtype=torch.long, device=self.device)
         for _ in range(max_new_tokens):
             # Our position embedding has a maximum length, so if the input is
             # longer than the block size, then crop it.
@@ -79,10 +88,12 @@ class Attention(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.head_size = config.n_embed // config.n_heads
-        self.key = nn.Linear(config.n_embed, self.head_size)
-        self.query = nn.Linear(config.n_embed, self.head_size)
-        self.value = nn.Linear(config.n_embed, self.head_size)
+        self.key = nn.Linear(config.n_embed, self.head_size, bias=False)
+        self.query = nn.Linear(config.n_embed, self.head_size, bias=False)
+        self.value = nn.Linear(config.n_embed, self.head_size, bias=False)
         self.dropout = nn.Dropout(config.p_dropout)
+        mask = torch.tril(torch.ones(config.block_size, config.block_size)) == 0
+        self.register_buffer("mask", mask)
         self.config = config
 
     def get_attention_mask(self, T):
@@ -93,7 +104,7 @@ class Attention(nn.Module):
             torch.tensor([[0,1],
                           [0,0]])
         """
-        return torch.tril(torch.ones((T, T))) == 0
+        return self.mask[:T, :T]
 
     def forward(self, x):
         B, T, C = x.shape
@@ -110,7 +121,7 @@ class Attention(nn.Module):
         # The query and key matrices cannot be multiplied directly; the query
         # matrix needs to be transposed such that all channel vectors are
         # dotted with one another
-        affinity_scores = k @ rearrange(q, "b t c -> b c t")
+        affinity_scores = q @ rearrange(k, "b t c -> b c t")
         assert affinity_scores.shape == (B, T, T)
         # Softmax will quickly converge on producing one-hot vectors, whereas
         # we want each output token to be a mix of the input tokens. So we
@@ -120,7 +131,7 @@ class Attention(nn.Module):
         # of the attention to −∞, the softmax allocates those weights to the past
         # and present tokens.
         affinity_scores = affinity_scores.masked_fill(
-            self.get_attention_mask(T).to(x.device), -float("inf")
+            self.get_attention_mask(T), -float("inf")
         )
         # Randomly drop some of the affinities to encourage regularization
         affinity_scores = self.dropout(affinity_scores)
@@ -174,15 +185,12 @@ class GptBlock(nn.Module):
             nn.Linear(config.n_embed, 4 * config.n_embed),
             nn.ReLU(),
             nn.Linear(4 * config.n_embed, config.n_embed),
-            nn.Dropout(config.p_dropout),
         )
         self.dropout_b = nn.Dropout(config.p_dropout)
 
     def forward(self, x):
-        x = x + self.msa(self.norm_a(x))
-        x = self.dropout_a(x)
-        x = x + self.ffn(self.norm_b(x))
-        x = self.dropout_b(x)
+        x = x + self.dropout_a(self.msa(self.norm_a(x)))
+        x = x + self.dropout_b(self.ffn(self.norm_b(x)))
         return x
 
 
@@ -199,14 +207,6 @@ class Gpt(LM):
         self.config = config
         self.save_hyperparameters(config.dict())
         self.apply(self._init_weights)
-
-    def init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, idxs):
         B, T = idxs.shape

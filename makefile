@@ -10,6 +10,5 @@ install:  ## install training library
 run: install  ## run training, small model by default
 	@train-gpt train $(CONFIG)
 
-
-karpathy: install  ## run the karpathy model
-	@train-gpt karpathy
+run_karpathy: install  ## run training, small model by default
+	@train-gpt train $(CONFIG) --karpathy

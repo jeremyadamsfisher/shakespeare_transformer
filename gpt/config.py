@@ -52,8 +52,8 @@ gpt_large = GptConfig(
     block_size=256,
     learning_rate=3e-4,
     n_embed=384,
-    n_head=6,
-    n_layer=6,
+    n_heads=6,
+    n_layers=6,
     p_dropout=0.2,
     n_epochs=10,
 )
