@@ -19,7 +19,6 @@ class Head(nn.Module):
         self.register_buffer(
             "tril", torch.tril(torch.ones(config.block_size, config.block_size))
         )
-
         self.dropout = nn.Dropout(config.p_dropout)
 
     def forward(self, x):

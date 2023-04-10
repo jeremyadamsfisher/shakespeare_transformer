@@ -133,17 +133,14 @@ class Attention(nn.Module):
         affinity_scores = affinity_scores.masked_fill(
             self.get_attention_mask(T), -float("inf")
         )
-        # Randomly drop some of the affinities to encourage regularization
-        affinity_scores = self.dropout(affinity_scores)
-        # Occasionally, dropouts produce NaNs, whereas we want 0s.
-        # https://discuss.pytorch.org/t/getting-nans-from-dropout-layer/70693
-        affinity_scores = torch.nan_to_num(affinity_scores, nan=0.0)
         # Convert to a probability distribution
         affinity = F.softmax(affinity_scores, dim=-1)
+        # Randomly drop some of the affinities to encourage regularization
+        affinity = self.dropout(affinity)
+        # Occasionally, dropouts produce NaNs, whereas we want 0s.
+        # https://discuss.pytorch.org/t/getting-nans-from-dropout-layer/70693
+        affinity = torch.nan_to_num(affinity, nan=0.0)
         assert affinity.shape == (B, T, T)
-        assert torch.allclose(
-            affinity.sum(axis=-1), torch.ones((B, T), device=x.device)
-        )
         # Consider the leftmost output token, which is the vector of dot products
         # of the first row of attention and all the value channel columns for all
         # tokens. Because all the logits are zero in the first row of attention
@@ -178,8 +175,8 @@ class GptBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.norm_a = nn.LayerNorm(config.n_embed)
-        self.dropout_a = nn.Dropout(config.p_dropout)
         self.msa = MSA(config)
+        self.dropout_a = nn.Dropout(config.p_dropout)
         self.norm_b = nn.LayerNorm(config.n_embed)
         self.ffn = nn.Sequential(
             nn.Linear(config.n_embed, 4 * config.n_embed),
