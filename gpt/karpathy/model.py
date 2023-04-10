@@ -1,35 +1,26 @@
+"""adapted from https://github.com/karpathy/nanoGPT/blob/master/model.py"""
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-import lightning.pytorch as L
-from einops import rearrange
 
-# hyperparameters
-batch_size = 64  # how many independent sequences will we process in parallel?
-block_size = 256  # what is the maximum context length for predictions?
-max_iters = 5000
-eval_interval = 500
-learning_rate = 3e-4
-device = "cuda" if torch.cuda.is_available() else "cpu"
-eval_iters = 200
-n_embd = 384
-n_head = 6
-n_layer = 6
-dropout = 0.2
-vocab_size = 65
-
+from gpt.config import GptConfig
+from gpt.model import LM
 
 class Head(nn.Module):
     """one head of self-attention"""
 
-    def __init__(self, head_size):
+    def __init__(self, config: GptConfig):
         super().__init__()
-        self.key = nn.Linear(n_embd, head_size, bias=False)
-        self.query = nn.Linear(n_embd, head_size, bias=False)
-        self.value = nn.Linear(n_embd, head_size, bias=False)
-        self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+        head_size = config.n_embed // config.n_heads
+        self.key = nn.Linear(config.n_embed, head_size, bias=False)
+        self.query = nn.Linear(config.n_embed, head_size, bias=False)
+        self.value = nn.Linear(config.n_embed, head_size, bias=False)
+        self.register_buffer(
+            "tril", torch.tril(torch.ones(config.block_size, config.block_size))
+        )
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(config.p_dropout)
 
     def forward(self, x):
         # input of size (batch, time-step, channels)
@@ -53,11 +44,11 @@ class Head(nn.Module):
 class MultiHeadAttention(nn.Module):
     """multiple heads of self-attention in parallel"""
 
-    def __init__(self, num_heads, head_size):
+    def __init__(self, config: GptConfig):
         super().__init__()
-        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.proj = nn.Linear(head_size * num_heads, n_embd)
-        self.dropout = nn.Dropout(dropout)
+        self.heads = nn.ModuleList([Head(config) for _ in range(config.n_heads)])
+        self.proj = nn.Linear(config.n_embed, config.n_embed)
+        self.dropout = nn.Dropout(config.p_dropout)
 
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
@@ -68,13 +59,13 @@ class MultiHeadAttention(nn.Module):
 class FeedFoward(nn.Module):
     """a simple linear layer followed by a non-linearity"""
 
-    def __init__(self, n_embd):
+    def __init__(self, config: GptConfig):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
+            nn.Linear(config.n_embed, 4 * config.n_embed),
             nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd),
-            nn.Dropout(dropout),
+            nn.Linear(4 * config.n_embed, config.n_embed),
+            nn.Dropout(config.p_dropout),
         )
 
     def forward(self, x):
@@ -84,14 +75,13 @@ class FeedFoward(nn.Module):
 class Block(nn.Module):
     """Transformer block: communication followed by computation"""
 
-    def __init__(self, n_embd, n_head):
-        # n_embd: embedding dimension, n_head: the number of heads we'd like
+    def __init__(self, config: GptConfig):
+        # config.n_embed: embedding dimension, config.n_heads: the number of heads we'd like
         super().__init__()
-        head_size = n_embd // n_head
-        self.sa = MultiHeadAttention(n_head, head_size)
-        self.ffwd = FeedFoward(n_embd)
-        self.ln1 = nn.LayerNorm(n_embd)
-        self.ln2 = nn.LayerNorm(n_embd)
+        self.sa = MultiHeadAttention(config)
+        self.ffwd = FeedFoward(config)
+        self.ln1 = nn.LayerNorm(config.n_embed)
+        self.ln2 = nn.LayerNorm(config.n_embed)
 
     def forward(self, x):
         x = x + self.sa(self.ln1(x))
@@ -99,80 +89,31 @@ class Block(nn.Module):
         return x
 
 
-class GPTLanguageModel(L.LightningModule):
-    def __init__(self):
+class GPTLanguageModel(LM):
+    def __init__(self, config: GptConfig):
         super().__init__()
         # each token directly reads off the logits for the next token from a lookup table
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.blocks = nn.Sequential(
-            *[Block(n_embd, n_head=n_head) for _ in range(n_layer)]
-        )
-        self.ln_f = nn.LayerNorm(n_embd)  # final layer norm
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+        self.token_embedding_table = nn.Embedding(config.vocab_size, config.n_embed)
+        self.position_embedding_table = nn.Embedding(config.block_size, config.n_embed)
+        self.blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layers)])
+        self.ln_f = nn.LayerNorm(config.n_embed)  # final layer norm
+        self.lm_head = nn.Linear(config.n_embed, config.vocab_size)
 
         # better init, not covered in the original GPT video, but important, will cover in followup video
         self.apply(self._init_weights)
-
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        self.config = config
+        self.save_hyperparameters(config.dict())
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
 
         # idx and targets are both (B,T) tensor of integers
         tok_emb = self.token_embedding_table(idx)  # (B,T,C)
-        pos_emb = self.position_embedding_table(torch.arange(T, device=device))  # (T,C)
+        pos_emb = self.position_embedding_table(
+            torch.arange(T, device=idx.device)
+        )  # (T,C)
         x = tok_emb + pos_emb  # (B,T,C)
         x = self.blocks(x)  # (B,T,C)
         x = self.ln_f(x)  # (B,T,C)
         logits = self.lm_head(x)  # (B,T,vocab_size)
         return logits
-
-    def step(self, batch):
-        xb, yb = batch
-        logits = self.forward(xb)
-        B, T, C = logits.shape
-        assert C == vocab_size
-        return F.cross_entropy(
-            rearrange(logits, "b t c -> (b t) c"),
-            rearrange(yb, "b t -> (b t)"),
-        )
-
-    def training_step(self, batch, batch_idx):
-        loss = self.step(batch)
-        self.log("trn_loss", loss)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        loss = self.step(batch)
-        self.log("tst_loss", loss)
-        return loss
-    
-    def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=learning_rate)
-        return optimizer
-
-    def generate(self, idx=None, max_new_tokens=50):
-        if idx is None:
-            idx = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-        # idx is (B, T) array of indices in the current context
-        for _ in range(max_new_tokens):
-            # crop idx to the last block_size tokens
-            idx_cond = idx[:, -block_size:]
-            # get the predictions
-            logits = self(idx_cond)
-            # focus only on the last time step
-            logits = logits[:, -1, :] # becomes (B, C)
-            # apply softmax to get probabilities
-            probs = F.softmax(logits, dim=-1) # (B, C)
-            # sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
-            # append sampled index to the running sequence
-            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
-        return idx[0,1:]
