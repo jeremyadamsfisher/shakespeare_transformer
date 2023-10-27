@@ -10,6 +10,10 @@ requirements = [
     "shellingham",
     "wandb",
     "loguru",
+    "datasets",
+    "apache_beam",
+    "mwparserfromhell",
+    "pydantic",
 ]
 
 setup(

@@ -1,76 +1,79 @@
-import multiprocessing
-from pathlib import Path
-
-import lightning.pytorch as pl
-import requests
+import string
+from datasets import load_dataset
 import torch
+import lightning.pytorch as pl
 from torch.utils.data import DataLoader
 
-DOWNLOAD_URL = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
+
+class CharTokenizer:
+    def __init__(self):
+        self.char2idx = {}
+        self.idx2char = {}
+
+        for char in string.printable:
+            idx = len(self.char2idx)
+            self.char2idx[char] = idx
+            self.idx2char[idx] = char
+
+    def encode(self, s: str):
+        idxs = torch.tensor(
+            [self.char2idx.get(char, self.char2idx["\n"]) for char in s],
+            dtype=torch.long,
+        )
+        return idxs
+
+    def decode(self, idxs: list[int]) -> str:
+        return "".join(self.idx2char[int(i.item())] for i in idxs)
+
+    @property
+    def vocab_size(self):
+        return len(self.char2idx)
 
 
-def get_encoder_decoder(trn_corpus):
-    chars = sorted(set(trn_corpus))
-    vocab_size = len(chars)
-    char2idx = {c: i for i, c in enumerate(chars)}
-    idx2char = {i: c for i, c in enumerate(chars)}
-
-    def encode(s):
-        return torch.tensor([char2idx[char] for char in s], dtype=torch.long)
-
-    def decode(idxs):
-        return "".join(idx2char[int(idx)] for idx in idxs)
-
-    return encode, decode, vocab_size
-
-
-class CharDataset:
-    def __init__(self, corpus, config):
-        self.corpus = corpus
+class CharDataset(torch.utils.data.IterableDataset):
+    def __init__(self, config, ds, split, tokenizer):
+        self.X = ds[split].select_columns(["text"])
         self.config = config
+        self.tokenizer = tokenizer
 
-    def __len__(self):
-        return len(self.corpus) - self.config.block_size
+    def __iter__(self):
+        for example in self.X:
+            doc = example["text"]
+            for idx in range(len(doc) - self.config.block_size - 1):
+                x = doc[idx : idx + self.config.block_size]
+                y = doc[idx + 1 : idx + self.config.block_size + 1]
+                yield self.tokenizer.encode(x), self.tokenizer.encode(y)
 
-    def __getitem__(self, idx):
-        x = self.corpus[idx : idx + self.config.block_size]
-        y = self.corpus[idx + 1 : idx + self.config.block_size + 1]
-        return x, y
 
-
-class ShakespeareDataModule(pl.LightningDataModule):
-    def __init__(
-        self,
-        config,
-        workers=1,
-    ):
+class WikipediaDataModule(pl.LightningDataModule):
+    def __init__(self, config):
         super().__init__()
-        self.data_fp = Path("./input.txt")
         self.config = config
-        self.workers = workers if workers > 0 else multiprocessing.cpu_count()
+        self.tokenizer = CharTokenizer()
 
-    def setup(self, stage=None, tst_trn_split=0.1):
-        if self.data_fp.exists():
-            corpus = self.data_fp.read_text()
-        else:
-            corpus = requests.get(DOWNLOAD_URL).text
-            with self.data_fp.open("w") as f:
-                f.write(corpus)
-        n = int(len(corpus) * tst_trn_split)
-        corpus_trn, corpus_tst = corpus[n:], corpus[:n]
-        self.encode, self.decode, self.vocab_size = get_encoder_decoder(corpus_trn)
-        self.X_trn = CharDataset(self.encode(corpus_trn), self.config)
-        self.X_tst = CharDataset(self.encode(corpus_tst), self.config)
+    def encode(self, s):
+        return self.tokenizer.encode(s)
+
+    def decode(self, idxs):
+        return self.tokenizer.decode(idxs)
+
+    def setup(self, stage=None):
+        self.vocab_size = self.tokenizer.vocab_size
+        ds = load_dataset("wikipedia", "20220301.en", streaming=True)
+        self.X_trn = CharDataset(self.config, ds, "train", self.tokenizer)
+        # self.X_tst = CharDataset(self.config, ds, "test", self.tokenizer)
 
     def train_dataloader(self):
         return DataLoader(
             self.X_trn,
             batch_size=self.config.batch_size,
-            shuffle=True,
-            num_workers=self.workers,
+            num_workers=1,
+            persistent_workers=True,
         )
 
-    def val_dataloader(self):
-        return DataLoader(
-            self.X_tst, batch_size=self.config.batch_size, num_workers=self.workers
-        )
+    # def val_dataloader(self):
+    #     return DataLoader(
+    #         self.X_tst,
+    #         batch_size=self.config.batch_size,
+    #         num_workers=1,
+    #     )
