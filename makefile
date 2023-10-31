@@ -10,7 +10,9 @@ bump:  # bump patch version
 install:  ## install training library
 	@pip install -q -e .
 
-run: install  ## run training, small model by default
+run:  ## run training, small model by default
+	@$(MAKE) bump
+	@$(MAKE) install
 	@train-gpt $(CONFIG)
 
 run_karpathy: install  ## run training, small model by default
