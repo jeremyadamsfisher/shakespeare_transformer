@@ -6,7 +6,7 @@ app = typer.Typer()
 @app.command()
 def train(config: str, log_periodicity: int = 100):
     # import here to avoid doing so for --help ingress
-    from gpt.config import gpt_micro, gpt_micro_one_cycle, gpt3_small
+    from gpt.config import gpt_micro, gpt_micro_one_cycle, gpt3_small, gpt3_smaller
     from gpt.data.wikipedia import WikipediaDataModule
     from gpt.model import Gpt
     from gpt.train import train as train_
@@ -16,6 +16,7 @@ def train(config: str, log_periodicity: int = 100):
             "micro": gpt_micro,
             "micro_one_cycle": gpt_micro_one_cycle,
             "gpt3_small": gpt3_small,
+            "gpt3_smaller": gpt3_smaller,
         }[config.replace("-", "_").lower()]
     except KeyError:
         print(f"Unknown config: {config}")

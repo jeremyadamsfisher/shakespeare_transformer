@@ -36,6 +36,18 @@ gpt_micro = GptConfig(
 gpt_micro_one_cycle = gpt_micro.copy()
 gpt_micro_one_cycle.one_cycle_scheduler = True
 
+
+gpt3_smaller = GptConfig(
+    batch_size=1,
+    block_size=2048,
+    learning_rate=8e-4,
+    n_embed=512,
+    n_heads=8,
+    n_layers=8,
+    p_dropout=0.2,
+    n_epochs=1,
+)
+
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1
 gpt3_small = GptConfig(
     batch_size=1,
