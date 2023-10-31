@@ -4,33 +4,27 @@ app = typer.Typer(pretty_exceptions_enable=False)
 
 
 @app.command()
-def train(config: str, dataset: str, log_periodicity: int = 100, karpathy: bool = False):
+def train(config: str, log_periodicity: int = 100):
     # import here to avoid doing so for --help ingress
-    from gpt.config import (gpt_large, gpt_larger, gpt_medium, gpt_small,
-                            gpt_small_one_cycle)
+    from gpt.config import gpt_micro, gpt_micro_one_cycle, gpt3_small
     from gpt.data.wikipedia import WikipediaDataModule
-    from gpt.karpathy.model import GPTLanguageModel
     from gpt.model import Gpt
     from gpt.train import train as train_
 
     try:
         model_config = {
-            "large": gpt_large,
-            "medium": gpt_medium,
-            "small": gpt_small,
-            "small_one_cycle": gpt_small_one_cycle,
-            "larger": gpt_larger
+            "micro": gpt_micro,
+            "micro_one_cycle": gpt_micro_one_cycle,
+            "gpt3_small": gpt3_small,
         }[config.replace("-", "_").lower()]
     except KeyError:
         print(f"Unknown config: {config}")
         return
 
-    try:
-        dm = WikipediaDataModule(config)
+    dm = WikipediaDataModule(config)
 
-    model_f = GPTLanguageModel if karpathy else Gpt
-    model = model_f(model_config)
-    train_(model, model_config, log_periodicity)
+    model = Gpt(model_config)
+    train_(model, model_config, dm, log_periodicity)
 
 
 if __name__ == "__main__":

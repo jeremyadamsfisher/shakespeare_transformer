@@ -27,7 +27,7 @@ class LogGenerationPeriodically(L.Callback):
             logger.info("generation: {}", output)
 
 
-def train(model, config: GptConfig, dm, log_periodicity=100):
+def train(model, config: GptConfig, dm: L.LightningDataModule, log_periodicity=100):
     with wandb.init(project="gpt-shakespeare", config={**config.dict()}) as run:
         dm.setup()
         logger = WandbLogger()

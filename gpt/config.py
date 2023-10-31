@@ -22,7 +22,7 @@ class GptConfig(BaseModel):
     one_cycle_scheduler: Optional[bool] = False
 
 
-gpt_small = GptConfig(
+gpt_micro = GptConfig(
     batch_size=512,
     block_size=32,
     n_embed=64,
@@ -33,41 +33,8 @@ gpt_small = GptConfig(
     n_epochs=4,
 )
 
-gpt_small_one_cycle = gpt_small.copy()
-gpt_small_one_cycle.one_cycle_scheduler = True
-
-gpt_medium = GptConfig(
-    batch_size=256,
-    block_size=128,
-    n_embed=384,
-    n_heads=6,
-    n_layers=6,
-    p_dropout=0.2,
-    lr=3e-4,
-    n_epochs=10,
-)
-
-gpt_large = GptConfig(
-    batch_size=64,
-    block_size=256,
-    learning_rate=3e-4,
-    n_embed=384,
-    n_heads=6,
-    n_layers=6,
-    p_dropout=0.2,
-    n_epochs=10,
-)
-
-gpt_larger = GptConfig(
-    batch_size=128,
-    block_size=256,
-    learning_rate=3e-4,
-    n_embed=512,
-    n_heads=8,
-    n_layers=10,
-    p_dropout=0.2,
-    n_epochs=1,
-)
+gpt_micro_one_cycle = gpt_micro.copy()
+gpt_micro_one_cycle.one_cycle_scheduler = True
 
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1
 gpt3_small = GptConfig(
