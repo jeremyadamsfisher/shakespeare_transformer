@@ -4,8 +4,8 @@ CONFIG="SMALL"
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-bump:  # bump minor version
-	@bump2version
+bump:  # bump patch version
+	@bump-my-version bump patch
 
 install:  ## install training library
 	@pip install -q -e .
