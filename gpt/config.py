@@ -11,7 +11,7 @@ class GptConfig(BaseModel):
     n_layers: int
 
     # dataset-specific
-    vocab_size: int = 65
+    vocab_size: int = 75
 
     # training-specific
     batch_size: int
@@ -56,4 +56,27 @@ gpt_large = GptConfig(
     n_layers=6,
     p_dropout=0.2,
     n_epochs=10,
+)
+
+gpt_larger = GptConfig(
+    batch_size=128,
+    block_size=256,
+    learning_rate=3e-4,
+    n_embed=512,
+    n_heads=8,
+    n_layers=10,
+    p_dropout=0.2,
+    n_epochs=1,
+)
+
+# See: https://arxiv.org/pdf/2005.14165.pdf table 2.1
+gpt3_small = GptConfig(
+    batch_size=1,
+    block_size=2048,
+    learning_rate=6e-4,
+    n_embed=768,
+    n_heads=12,
+    n_layers=12,
+    p_dropout=0.2,
+    n_epochs=1,
 )

@@ -7,6 +7,7 @@ from torch.nn import functional as F
 from gpt.config import GptConfig
 from gpt.model import LM
 
+
 class Head(nn.Module):
     """one head of self-attention"""
 

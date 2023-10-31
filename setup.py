@@ -14,6 +14,7 @@ requirements = [
     "apache_beam",
     "mwparserfromhell",
     "pydantic",
+    "Unidecode",
 ]
 
 setup(

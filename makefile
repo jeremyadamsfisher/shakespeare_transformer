@@ -8,7 +8,11 @@ install:  ## install training library
 	@pip install -q -e .
 
 run: install  ## run training, small model by default
-	@train-gpt train $(CONFIG)
+	@train-gpt $(CONFIG)
 
 run_karpathy: install  ## run training, small model by default
-	@train-gpt train $(CONFIG) --karpathy
+	@train-gpt $(CONFIG) --karpathy
+
+lint:  # clean up the source code
+	@isort .
+	@black . 
