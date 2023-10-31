@@ -7,7 +7,6 @@ from pytorch_lightning.loggers import WandbLogger
 
 import wandb
 from gpt.config import GptConfig
-from gpt.data.wikipedia import WikipediaDataModule
 
 
 class LogGenerationPeriodically(L.Callback):
