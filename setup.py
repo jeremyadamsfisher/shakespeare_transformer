@@ -14,11 +14,12 @@ requirements = [
     "apache_beam",
     "mwparserfromhell",
     "pydantic",
+    "Unidecode",
 ]
 
 setup(
     name="gpt",
-    version="1.0",
+    version="0.0.1",
     packages=find_packages(),
     install_requires=requirements,
     entry_points="""

@@ -7,7 +7,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 import wandb
 from gpt.config import GptConfig
-from gpt.data import WikipediaDataModule
+from gpt.data.wikipedia import WikipediaDataModule
 
 
 class LogGenerationPeriodically(L.Callback):
@@ -27,9 +27,8 @@ class LogGenerationPeriodically(L.Callback):
             logger.info("generation: {}", output)
 
 
-def train(model, config: GptConfig, log_periodicity=100):
-    with wandb.init(project="gpt-shakespeare") as run:
-        dm = WikipediaDataModule(config)
+def train(model, config: GptConfig, dm: L.LightningDataModule, log_periodicity=100):
+    with wandb.init(project="gpt-shakespeare", config={**config.dict()}) as run:
         dm.setup()
         logger = WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, logger)
@@ -37,8 +36,9 @@ def train(model, config: GptConfig, log_periodicity=100):
             max_epochs=config.n_epochs,
             callbacks=[log_cb, L.callbacks.EarlyStopping("tst_loss")],
             logger=[logger],
-            val_check_interval=100,
+            val_check_interval=1000,
             precision="16-mixed",
+            accelerator="auto",
         )
         trainer.fit(model, dm)
         with tempfile.NamedTemporaryFile(suffix=".ckpt") as f:

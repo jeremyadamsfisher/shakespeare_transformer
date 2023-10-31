@@ -230,3 +230,5 @@ lightning_logs
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,macos
 wandb/
 .envrc
+
+.vscode
