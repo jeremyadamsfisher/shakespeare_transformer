@@ -12,8 +12,6 @@ class WikipediaDataModule(CharDataModule):
         self.vocab_size = self.tokenizer.vocab_size
         ds = load_dataset("wikipedia", "20220301.en", split="train")
         dsx = ds.train_test_split(test_size=0.01)
-        dsx["train"].set_format("torch", columns=["text"])
-        dsx["test"].set_format("torch", columns=["text"])
         self.X_trn = CharDataset(self.config, dsx["train"], self.tokenizer)
         self.X_tst = CharDataset(self.config, dsx["test"], self.tokenizer)
 
