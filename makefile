@@ -21,3 +21,6 @@ lint:  # clean up the source code
 docker_build:
 	@docker build -t $(DOCKER_IMG) .
 	@docker push $(DOCKER_IMG) 
+
+docker_poke:
+	@docker run --rm -ti $(DOCKER_IMG)
