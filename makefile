@@ -1,5 +1,5 @@
 .PHONY: help
-CONFIG="SMALL"
+CONFIG="micro"
 DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:$(shell bump-my-version show current_version)
 
 help:
@@ -20,4 +20,4 @@ lint:  # clean up the source code
 
 docker_build:
 	@docker build -t $(DOCKER_IMG) .
-	@docker push $(DOCKER_IMG)
+	@docker push $(DOCKER_IMG) 
