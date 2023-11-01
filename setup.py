@@ -15,11 +15,12 @@ requirements = [
     "mwparserfromhell",
     "pydantic",
     "Unidecode",
+    "GitPython",
 ]
 
 setup(
     name="gpt",
-    version="0.0.1",
+    version="0.0.4",
     packages=find_packages(),
     install_requires=requirements,
     entry_points="""

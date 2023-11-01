@@ -1,15 +1,40 @@
+import re
 import typer
 
 app = typer.Typer()
 
 
+def check_for_repo_versioned_without_uncommited_changes():
+    """If the current commit has unstaged/uncommited changes or lacks a version
+    tag, throw an exception."""
+    import git
+
+    repo = git.Repo(search_parent_directories=True)
+
+    if not repo.head.is_valid():
+        raise Exception("The current directory is not part of a Git repository.")
+
+    for tag in repo.tags:
+        if tag.commit.hexsha == repo.head.commit.hexsha:
+            if re.match(r"v\d+\.\d+\.\d+", tag.name):
+                break
+    else:
+        raise Exception("No version tag found in the current commit!")
+
+    if repo.index.diff(None):
+        raise Exception("Uncommitted changes!")
+
+
 @app.command()
-def train(config: str, log_periodicity: int = 100):
+def train(config: str, log_periodicity: int = 100, dirty: bool = False):
     # import here to avoid doing so for --help ingress
     from gpt.config import gpt_micro, gpt_micro_one_cycle, gpt3_small, gpt3_smaller
     from gpt.data.wikipedia import WikipediaDataModule
     from gpt.model import Gpt
     from gpt.train import train as train_
+
+    if dirty is False:
+        check_for_repo_versioned_without_uncommited_changes()
 
     try:
         model_config = {
