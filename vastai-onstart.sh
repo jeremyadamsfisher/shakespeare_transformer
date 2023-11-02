@@ -1,0 +1,1 @@
+echo $WANDB_AUTH | base64 --decode > /root/.netrc

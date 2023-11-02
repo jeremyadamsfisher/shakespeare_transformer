@@ -23,4 +23,4 @@ docker_build:
 	@docker push $(DOCKER_IMG) 
 
 docker_poke:
-	@docker run --rm -ti $(DOCKER_IMG)
+	@docker run --rm -ti $(DOCKER_IMG) 
