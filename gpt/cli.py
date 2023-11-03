@@ -1,4 +1,5 @@
 import re
+
 import typer
 
 app = typer.Typer()
@@ -28,7 +29,7 @@ def check_for_repo_versioned_without_uncommited_changes():
 @app.command()
 def train(config: str, log_periodicity: int = 100, dirty: bool = False):
     # import here to avoid doing so for --help ingress
-    from gpt.config import gpt_micro, gpt_micro_one_cycle, gpt3_small, gpt3_smaller
+    from gpt.config import gpt3_small, gpt3_smaller, gpt_micro, gpt_micro_one_cycle
     from gpt.data.wikipedia import WikipediaDataModule
     from gpt.model import Gpt
     from gpt.train import train as train_
@@ -50,6 +51,23 @@ def train(config: str, log_periodicity: int = 100, dirty: bool = False):
     dm = WikipediaDataModule(model_config)
     model = Gpt(model_config)
     train_(model, model_config, dm, log_periodicity)
+
+
+@app.command()
+def tokenize_wikipedia():
+    # import here to avoid doing so for --help ingress
+    from datasets import load_dataset
+    from tqdm import tqdm
+
+    import wandb
+    from gpt import PROJECT_ID
+    from gpt.tokenizer import BpeTokenzizer
+
+    with wandb.init(project=PROJECT_ID) as run:
+        ds = load_dataset("wikipedia", "20220301.en", split="train")
+        iter_ = (row["text"] for row in ds)
+        bpe = BpeTokenzizer.from_string_iterable(tqdm(iter_, unit="line"))
+        bpe.save_wandb_artifact(run)
 
 
 if __name__ == "__main__":

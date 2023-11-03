@@ -16,6 +16,7 @@ requirements = [
     "pydantic",
     "Unidecode",
     "GitPython",
+    "tokenizers",
 ]
 
 setup(
