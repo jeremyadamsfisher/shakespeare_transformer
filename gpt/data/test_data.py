@@ -9,7 +9,7 @@ def test_shifted_seq_index():
     seq = [{"tokens": [K * i + j for j in range(K)]} for i in range(100)]
     config = Namespace(block_size=block_size)
     n_blocks_per_example = K - block_size - 1
-     
+
     print("n_blocks_per_example: ", n_blocks_per_example)
 
     ds = ShiftedSequenceDataset(config, seq)

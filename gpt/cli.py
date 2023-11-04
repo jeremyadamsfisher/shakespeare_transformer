@@ -48,13 +48,10 @@ def train(config: str, log_periodicity: int = 100, dirty: bool = False):
     except KeyError:
         print(f"Unknown config: {config}")
         return
-
-    if model_config.tokenizer:
-        dm = WikipediaDataModule.with_bpe_tokenization(model_config)
-    else:
-        dm = WikipediaDataModule.with_char_tokenization(model_config)
-
+    
+    dm = WikipediaDataModule(model_config)
     model = Gpt(model_config)
+    
     train_(model, model_config, dm, log_periodicity)
 
 

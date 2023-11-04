@@ -1,14 +1,46 @@
-from functools import lru_cache, partial
+from bisect import bisect_left
+from functools import lru_cache
 from typing import Callable, Dict, Sequence
 
 import pytorch_lightning as L
+import torch
 from datasets import load_dataset
 from loguru import logger
 from torch import Tensor
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-from gpt.data import ShiftedSequenceDataset
 from gpt.tokenizer import CharTokenizer
+
+
+class ShiftedSequenceDataset:
+    def __init__(self, config, ds):
+        self.ds = ds
+        self.config = config
+        self.index = []
+        for doc in tqdm(ds, unit="example", desc="Computing dataset index"):
+            prev = self.index[-1] if self.index else -1
+            n_blocks = len(doc["tokens"]) - (self.config.block_size + 1)
+            self.index.append(prev + n_blocks)
+
+    def __len__(self):
+        return self.index[-1]
+
+    def _get_idx_and_offset(self, i):
+        ds_idx = bisect_left(self.index, i)
+        if ds_idx == 0:
+            offset = i
+        else:
+            offset = i - self.index[ds_idx - 1] - 1
+        return ds_idx, offset
+
+    def __getitem__(self, i):
+        ds_idx, offset = self._get_idx_and_offset(i)
+        tokens = self.ds[ds_idx]["tokens"]
+        x = tokens[offset : offset + self.config.block_size]
+        y = tokens[offset + 1 : offset + self.config.block_size + 1]
+        x, y = map(torch.tensor, (x, y))
+        return x, y
 
 
 def tokenize_wikipedia_dataset(ds, tokenize: Callable[[str], Tensor], min_block_size):
@@ -29,31 +61,21 @@ def tokenize_wikipedia_dataset(ds, tokenize: Callable[[str], Tensor], min_block_
 
 
 class WikipediaDataModule(L.LightningDataModule):
-    def __init__(self, config, encode, decode):
+    def __init__(self, config):
         super().__init__()
         self.config = config
-        self.encode = encode
-        self.decode = decode
 
-    @classmethod
-    def with_char_tokenization(cls, config):
-        tokenizer = CharTokenizer()
+        if config.tokenizer is not None:
+            from transformers import AutoTokenizer
+
+            tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
+        else:
+            tokenizer = CharTokenizer()
+
+        self.encode, self.decode = tokenizer.encode, tokenizer.decode
+
         if config.vocab_size != tokenizer.vocab_size:
             raise ValueError(f"please set vocab size to {tokenizer.vocab_size}")
-        return cls(config, encode=tokenizer.encode, decode=tokenizer.decode)
-
-    @classmethod
-    def with_bpe_tokenization(cls, config):
-        from transformers import AutoTokenizer
-
-        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
-        if config.vocab_size != tokenizer.vocab_size:
-            raise ValueError(f"please set vocab size to {tokenizer.vocab_size}")
-        return cls(
-            config,
-            encode=partial(tokenizer.encode, return_tensors="pt"),
-            decode=tokenizer.decode,
-        )
 
     def prepare_data(self):
         """Save dataset to cache directory"""

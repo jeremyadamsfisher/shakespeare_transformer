@@ -2,9 +2,9 @@ import tempfile
 
 import pytorch_lightning as L
 import torch
+import wandb
 from loguru import logger
 
-import wandb
 from gpt import PROJECT_ID
 from gpt.config import GptConfig
 
