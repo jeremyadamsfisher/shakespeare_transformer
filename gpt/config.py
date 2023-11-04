@@ -36,9 +36,12 @@ gpt_micro = GptConfig(
     vocab_size=50257,
 )
 
-gpt_micro_one_cycle = gpt_micro.copy()
+gpt_micro_one_cycle = gpt_micro.model_copy()
 gpt_micro_one_cycle.one_cycle_scheduler = True
 
+gpt_micro_char = gpt_micro.model_copy()
+gpt_micro_char.tokenizer = None
+gpt_micro_char.vocab_size = 75
 
 gpt3_smaller = GptConfig(
     batch_size=1,

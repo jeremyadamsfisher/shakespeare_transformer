@@ -29,7 +29,7 @@ def check_for_repo_versioned_without_uncommited_changes():
 @app.command()
 def train(config: str, log_periodicity: int = 100, dirty: bool = False):
     # import here to avoid doing so for --help ingress
-    from gpt.config import gpt3_small, gpt3_smaller, gpt_micro, gpt_micro_one_cycle
+    from gpt import config as C
     from gpt.data.wikipedia import WikipediaDataModule
     from gpt.model import Gpt
     from gpt.train import train as train_
@@ -39,10 +39,11 @@ def train(config: str, log_periodicity: int = 100, dirty: bool = False):
 
     try:
         model_config = {
-            "micro": gpt_micro,
-            "micro_one_cycle": gpt_micro_one_cycle,
-            "gpt3_small": gpt3_small,
-            "gpt3_smaller": gpt3_smaller,
+            "micro": C.gpt_micro,
+            "micro_char": C.gpt_micro_char,
+            "micro_one_cycle": C.gpt_micro_one_cycle,
+            "gpt3_small": C.gpt3_small,
+            "gpt3_smaller": C.gpt3_smaller,
         }[config.replace("-", "_").lower()]
     except KeyError:
         print(f"Unknown config: {config}")

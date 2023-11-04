@@ -6,17 +6,19 @@ from datasets import load_dataset
 from loguru import logger
 from torch import Tensor
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer
 
 from gpt.data import ShiftedSequenceDataset
 from gpt.tokenizer import CharTokenizer
 
-
-def tokenize_wikipedia_dataset(ds, tokenize: Callable[[str], Tensor]):
+def tokenize_wikipedia_dataset(ds, tokenize: Callable[[str], Tensor], min_block_size):
     def wikipedia_batch_process(batch: Dict[str, Sequence]) -> Dict[str, Sequence]:
-        texts: list[str] = batch["text"]
-        tokens = [tokenize(text) for text in texts]
-        return {"tokens": tokens}
+        tokens_batch = []
+        for text in batch["text"]:
+            tokens = tokenize(text)
+            if len(tokens) < min_block_size:
+                continue
+            tokens_batch.append(tokens)
+        return {"tokens": tokens_batch}
 
     return ds.map(
         wikipedia_batch_process,
@@ -27,6 +29,7 @@ def tokenize_wikipedia_dataset(ds, tokenize: Callable[[str], Tensor]):
 
 class WikipediaDataModule(L.LightningDataModule):
     def __init__(self, config, encode, decode):
+        super().__init__()
         self.config = config
         self.encode = encode
         self.decode = decode
@@ -40,6 +43,8 @@ class WikipediaDataModule(L.LightningDataModule):
 
     @classmethod
     def with_bpe_tokenization(cls, config):
+        from transformers import AutoTokenizer
+
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer)
         if config.vocab_size != tokenizer.vocab_size:
             raise ValueError(f"please set vocab size to {tokenizer.vocab_size}")
@@ -54,13 +59,14 @@ class WikipediaDataModule(L.LightningDataModule):
         load_dataset("jeremyf/tiny_wikipedia_en", split="train")
 
     def setup(self, stage=None):
-        logger.info("loading wikipedia into memory")
-
-        ds = load_dataset("jeremyf/tiny_wikipedia_en", split="train")
-
         logger.info("tokenizing wikipedia")
-
-        ds = tokenize_wikipedia_dataset(ds, tokenize=self.encode)
+        ds = load_dataset("jeremyf/tiny_wikipedia_en", split="train")
+        ds = tokenize_wikipedia_dataset(
+            ds,
+            tokenize=self.encode,
+            # Recall that we are predicting a shifted sequence
+            min_block_size=self.config.block_size + 1,
+        )
         dsx = ds.train_test_split(test_size=0.01)
         self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
         self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])

@@ -35,7 +35,7 @@ def train(model, config: GptConfig, dm: L.LightningDataModule, log_periodicity=1
             max_epochs=config.n_epochs,
             callbacks=[log_cb, L.callbacks.EarlyStopping("tst_loss")],
             logger=[logger],
-            val_check_interval=1000,
+            # val_check_interval=1000,
             precision="16-mixed",
             accelerator="auto",
         )

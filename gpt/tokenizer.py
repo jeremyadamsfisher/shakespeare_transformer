@@ -1,5 +1,5 @@
 import string
-
+from unidecode import unidecode
 import torch
 
 
@@ -14,6 +14,7 @@ class CharTokenizer:
             self.idx2char[idx] = char
 
     def encode(self, s: str):
+        s = unidecode(s).lower()
         idxs = torch.tensor(
             [self.char2idx[char] for char in s],
             dtype=torch.long,
