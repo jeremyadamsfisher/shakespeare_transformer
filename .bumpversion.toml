@@ -14,3 +14,8 @@ serialize = [
 ]
 search = "{current_version}"
 replace = "{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "gpt/__init__.py"
+search = "VERSION = \"{current_version}\""
+replace = "VERSION = \"{new_version}\""
