@@ -10,9 +10,6 @@ class GptConfig(BaseModel):
     n_heads: int
     n_layers: int
 
-    # dataset-specific
-    vocab_size: int = 75
-
     # training-specific
     batch_size: int
     n_epochs: int = 1
@@ -20,6 +17,10 @@ class GptConfig(BaseModel):
     lr: float = 1e-3
     test_train_split: float = 0.1
     one_cycle_scheduler: Optional[bool] = False
+
+    # tokenization
+    vocab_size: int
+    tokenizer: Optional[str] = None  # No tokenizer should give a character tokenization
 
 
 gpt_micro = GptConfig(
@@ -31,6 +32,8 @@ gpt_micro = GptConfig(
     p_dropout=0.0,
     lr=1e-2,
     n_epochs=4,
+    tokenizer="gpt2",
+    vocab_size=50257,
 )
 
 gpt_micro_one_cycle = gpt_micro.copy()
@@ -46,6 +49,8 @@ gpt3_smaller = GptConfig(
     n_layers=8,
     p_dropout=0.2,
     n_epochs=1,
+    tokenizer="gpt2",
+    vocab_size=50257,
 )
 
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1
@@ -58,4 +63,6 @@ gpt3_small = GptConfig(
     n_layers=12,
     p_dropout=0.2,
     n_epochs=1,
+    tokenizer="gpt2",
+    vocab_size=50257,
 )

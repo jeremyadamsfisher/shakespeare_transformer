@@ -1,6 +1,6 @@
 import math
 
-import lightning.pytorch as L
+import pytorch_lightning as L
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
@@ -11,6 +11,9 @@ class LM(L.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.config = config
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError("Subclasses should implement this")
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):

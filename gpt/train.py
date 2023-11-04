@@ -1,9 +1,8 @@
 import tempfile
 
-import lightning.pytorch as L
+import pytorch_lightning as L
 import torch
 from loguru import logger
-from pytorch_lightning.loggers import WandbLogger
 
 import wandb
 from gpt import PROJECT_ID
@@ -30,7 +29,7 @@ class LogGenerationPeriodically(L.Callback):
 def train(model, config: GptConfig, dm: L.LightningDataModule, log_periodicity=100):
     with wandb.init(project=PROJECT_ID, config={**config.dict()}) as run:
         dm.setup()
-        logger = WandbLogger()
+        logger = L.loggers.WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, logger)
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
