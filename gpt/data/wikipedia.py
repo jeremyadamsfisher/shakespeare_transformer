@@ -1,4 +1,4 @@
-from functools import partial
+from functools import lru_cache, partial
 from typing import Callable, Dict, Sequence
 
 import pytorch_lightning as L
@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 
 from gpt.data import ShiftedSequenceDataset
 from gpt.tokenizer import CharTokenizer
+
 
 def tokenize_wikipedia_dataset(ds, tokenize: Callable[[str], Tensor], min_block_size):
     def wikipedia_batch_process(batch: Dict[str, Sequence]) -> Dict[str, Sequence]:
@@ -58,7 +59,8 @@ class WikipediaDataModule(L.LightningDataModule):
         """Save dataset to cache directory"""
         load_dataset("jeremyf/tiny_wikipedia_en", split="train")
 
-    def setup(self, stage=None):
+    @lru_cache
+    def _setup(self):
         logger.info("tokenizing wikipedia")
         ds = load_dataset("jeremyf/tiny_wikipedia_en", split="train")
         ds = tokenize_wikipedia_dataset(
@@ -70,6 +72,9 @@ class WikipediaDataModule(L.LightningDataModule):
         dsx = ds.train_test_split(test_size=0.01)
         self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
         self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])
+
+    def setup(self, stage=None):
+        self._setup()
 
     def train_dataloader(self):
         return DataLoader(self.X_trn, shuffle=True, batch_size=self.config.batch_size)

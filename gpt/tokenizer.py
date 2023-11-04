@@ -1,6 +1,7 @@
 import string
-from unidecode import unidecode
+
 import torch
+from unidecode import unidecode
 
 
 class CharTokenizer:
