@@ -29,3 +29,6 @@ docker_poke:  ## run interactive docker shell
 lock:   ## lock the conda env
 	@conda-lock lock --kind explicit --micromamba -f env.cuda.yml -f env.yml -p linux-64
 	@conda-lock lock --kind explicit --micromamba -f env.yml -p osx-arm64
+
+test:  ## run tests
+	@PYTHONPATH=. pytest -vv
