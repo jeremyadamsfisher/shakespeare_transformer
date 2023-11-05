@@ -17,10 +17,7 @@ class CharTokenizer:
 
     def encode(self, s: str):
         s = unidecode(s).lower()
-        idxs = torch.tensor(
-            [self.char2idx[char] for char in s],
-            dtype=torch.long,
-        )
+        idxs = [self.char2idx[char] for char in s]
         return idxs
 
     def decode(self, idxs: Union[List[int], torch.Tensor]) -> str:

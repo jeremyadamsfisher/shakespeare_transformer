@@ -1,12 +1,12 @@
-import json
 import multiprocessing as mp
 from bisect import bisect
 from functools import lru_cache
+from pathlib import Path
 from typing import Callable, Dict, Sequence
 
 import pytorch_lightning as L
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from loguru import logger
 from torch import Tensor
 from torch.utils.data import DataLoader
@@ -15,6 +15,7 @@ from tqdm import tqdm
 from gpt.tokenizer import CharTokenizer
 
 WIKIPEDIA_URI = "jeremyf/tiny_wikipedia_en"
+WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
 class ShiftedSequenceDataset:
@@ -41,7 +42,7 @@ class ShiftedSequenceDataset:
         if ds_idx == 0:
             offset = i
         else:
-            offset = i - self.index[ds_idx-1]
+            offset = i - self.index[ds_idx - 1]
         return ds_idx, offset
 
     def __getitem__(self, i):
@@ -59,27 +60,50 @@ class ShiftedSequenceDataset:
         return x, y
 
 
-def tokenize_wikipedia_dataset(ds, tokenize: Callable[[str], Tensor], min_block_size):
+class PrecomputedShiftedSequenceDataset:
+    def __init__(self, config, ds):
+        self.ds = ds
+        self.config = config
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, i):
+        tokens = self.ds[i]["tokens"]
+        x, y = tokens[:-1], tokens[1:]
+        return x, y
+
+
+def tokenize_wikipedia_dataset(
+    ds, tokenize: Callable[[str], Tensor], min_block_size, store_blockwise
+):
     def wikipedia_batch_process(batch: Dict[str, Sequence]) -> Dict[str, Sequence]:
         tokens_batch = []
         for text in batch["text"]:
             tokens = tokenize(text)
             if min_block_size <= len(tokens):
-                tokens_batch.append(tokens)
+                if store_blockwise:
+                    for i in range(len(tokens) - min_block_size + 1):
+                        subtokens = tokens[i : i + min_block_size]
+                        tokens_batch.append(subtokens)
+                else:
+                    tokens_batch.append(tokens)
         return {"tokens": tokens_batch}
 
-    return ds.map(
+    ds = ds.map(
         wikipedia_batch_process,
         batched=True,
         remove_columns=["text"],
     )
+    return ds
 
 
 class WikipediaDataModule(L.LightningDataModule):
-    def __init__(self, config, n_workers=mp.cpu_count()):
+    def __init__(self, config, n_workers=mp.cpu_count(), profile=False):
         super().__init__()
         self.config = config
         self.n_workers = n_workers
+        self.profile = profile
 
         if config.tokenizer is not None:
             from transformers import AutoTokenizer
@@ -93,24 +117,42 @@ class WikipediaDataModule(L.LightningDataModule):
         if config.vocab_size != tokenizer.vocab_size:
             raise ValueError(f"please set vocab size to {tokenizer.vocab_size}")
 
+    @lru_cache
     def prepare_data(self):
         """Save dataset to cache directory"""
-        load_dataset(WIKIPEDIA_URI, split="train")
-
-    @lru_cache
-    def _setup(self):
-        logger.info("tokenizing wikipedia")
+        if Path(WIKIPEDIA_LOCAL_CACHE).exists():
+            return
         ds = load_dataset(WIKIPEDIA_URI, split="train")
+        logger.info("tokenizing wikipedia")
         ds = tokenize_wikipedia_dataset(
             ds,
             tokenize=self.encode,
             # We need a source block that is at least one token bigger than the
             # context width of the model
             min_block_size=self.config.block_size + 1,
+            store_blockwise=False,
         )
         dsx = ds.train_test_split(test_size=0.01)
-        self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
-        self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])
+        dsx.save_to_disk(WIKIPEDIA_LOCAL_CACHE)
+
+    @lru_cache
+    def _setup(self):
+        # Compute tokens and save to disk (may be called by lightning itself)
+        self.prepare_data()
+
+        # Memory-map: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
+        dsx = load_from_disk(WIKIPEDIA_LOCAL_CACHE).with_format("torch", dtype=torch.long)
+        # if self.profile:
+        if True:
+            dsx = dsx.select(range(25))
+        if False:
+            # Store everything with the blocks already in the right shape
+            self.X_trn = PrecomputedShiftedSequenceDataset(self.config, dsx["train"])
+            self.X_tst = PrecomputedShiftedSequenceDataset(self.config, dsx["test"])
+        else:
+            # Store all tokens, slice into them as neccesary
+            self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
+            self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])
 
     def setup(self, stage=None):
         self._setup()
@@ -121,7 +163,6 @@ class WikipediaDataModule(L.LightningDataModule):
             shuffle=True,
             batch_size=self.config.batch_size,
             num_workers=self.n_workers,
-            collate_fn=wikipedia_collator,
             pin_memory=True,
         )
 
@@ -130,12 +171,9 @@ class WikipediaDataModule(L.LightningDataModule):
             self.X_tst,
             batch_size=self.config.batch_size,
             num_workers=self.n_workers,
-            collate_fn=wikipedia_collator,
             pin_memory=True,
         )
 
 
-def wikipedia_collator(examples):
-    xs, ys = zip(*examples)
-    xs, ys = map(torch.tensor, (xs, ys))
-    return xs, ys
+def collator(batch):
+    xs, ys = zip(*batch)

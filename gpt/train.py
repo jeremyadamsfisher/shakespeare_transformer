@@ -34,18 +34,23 @@ def train(
     profile=False,
 ):
     with wandb.init(project=PROJECT_ID, config={**config.dict()}) as run:
-        model = torch.compile(model)
         dm.setup()
+
+        n_params = sum(param.numel() for param in model.parameters())
+        n_tokens = len(dm.train_dataloader())
+        print(f"# parameters: {n_params}")
+        print(f"# tokens: {n_tokens}")
+        print(f"tokens/parameters: {n_tokens/n_params} (chinchilla-optimal is 20/1)")
+
         logger = L.loggers.WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, logger)
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
-            callbacks=[log_cb, L.callbacks.EarlyStopping("tst_loss")],
+            callbacks=[log_cb],
             logger=[logger],
             val_check_interval=1000,
-            precision="b16-mixed",
             accelerator="auto",
-            profiler="advanced" if profile else None,
+            profiler="simple" if profile else None,
             fast_dev_run=10 if profile else None,
         )
         trainer.fit(model, dm)

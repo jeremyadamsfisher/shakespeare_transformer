@@ -26,14 +26,17 @@ def test_shifted_seq_index():
 
     ds = ShiftedSequenceDataset(config, examples)
 
-    assert ds.index == [n_usable_blocks_per_example*i for i in range(1, n_examples+1)]
+    assert ds.index == [
+        n_usable_blocks_per_example * i for i in range(1, n_examples + 1)
+    ]
 
     expected = [
         (i // n_usable_blocks_per_example, i % n_usable_blocks_per_example)
         for i in range(n_examples * n_usable_blocks_per_example)
     ]
     actual = [
-        ds._get_idx_and_offset(i) for i in range(n_examples * n_usable_blocks_per_example)
+        ds._get_idx_and_offset(i)
+        for i in range(n_examples * n_usable_blocks_per_example)
     ]
 
     assert actual == expected

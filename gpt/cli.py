@@ -51,7 +51,7 @@ def train(
         print(f"Unknown config: {config}")
         return
 
-    dm = WikipediaDataModule(model_config)
+    dm = WikipediaDataModule(model_config, profile=profile)
     model = Gpt(model_config)
 
     train_(model, model_config, dm, log_periodicity, profile)

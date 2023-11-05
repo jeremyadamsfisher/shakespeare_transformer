@@ -232,3 +232,6 @@ wandb/
 .envrc
 
 .vscode
+
+# Cached, semi-processed wikipedia data
+wikipedia_ds
