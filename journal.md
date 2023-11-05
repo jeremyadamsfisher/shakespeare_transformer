@@ -2,7 +2,7 @@
 
 [Weights and Biases](https://wandb.ai/jfisher40/gpt-shakespeare?workspace=user-jfisher40)
 
-## Nov 5th, 2023 (v0.0.8)
+## Nov 5th, 2023 (v0.0.9)
 
 Added a variety of features:
 - `--dirty` flag to prevent runs with uncommited files
@@ -11,6 +11,8 @@ Added a variety of features:
 - Using all tokens within a dataset
 - VastAI scaffolding if I decide to scale up to A100s/H100s
 
+Notes:
+- Very bottlenecked by dataloader (should I reduce processes?)
 
 ## October 27th, 2023 (v0.0.0)
 
