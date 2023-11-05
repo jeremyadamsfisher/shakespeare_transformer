@@ -2,9 +2,9 @@ import tempfile
 
 import pytorch_lightning as L
 import torch
-import wandb
 from loguru import logger
 
+import wandb
 from gpt import PROJECT_ID
 from gpt.config import GptConfig
 
@@ -26,7 +26,13 @@ class LogGenerationPeriodically(L.Callback):
             logger.info("generation: {}", output)
 
 
-def train(model, config: GptConfig, dm: L.LightningDataModule, log_periodicity=100):
+def train(
+    model,
+    config: GptConfig,
+    dm: L.LightningDataModule,
+    log_periodicity=100,
+    profile=False,
+):
     with wandb.init(project=PROJECT_ID, config={**config.dict()}) as run:
         dm.setup()
         logger = L.loggers.WandbLogger()
@@ -35,9 +41,11 @@ def train(model, config: GptConfig, dm: L.LightningDataModule, log_periodicity=1
             max_epochs=config.n_epochs,
             callbacks=[log_cb, L.callbacks.EarlyStopping("tst_loss")],
             logger=[logger],
-            # val_check_interval=1000,
+            val_check_interval=1000,
             precision="16-mixed",
             accelerator="auto",
+            profiler="advanced" if profile else None,
+            fast_dev_run=10 if profile else None,
         )
         trainer.fit(model, dm)
         with tempfile.NamedTemporaryFile(suffix=".ckpt") as f:

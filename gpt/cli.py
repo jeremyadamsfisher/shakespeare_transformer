@@ -27,12 +27,14 @@ def check_for_repo_versioned_without_uncommited_changes():
 
 
 @app.command()
-def train(config: str, log_periodicity: int = 100, dirty: bool = False):
+def train(
+    config: str, log_periodicity: int = 100, dirty: bool = False, profile: bool = False
+):
     # import here to avoid doing so for --help ingress
     from gpt import config as C
-    from gpt.data.wikipedia import WikipediaDataModule
     from gpt.model import Gpt
     from gpt.train import train as train_
+    from gpt.wikipedia import WikipediaDataModule
 
     if dirty is False:
         check_for_repo_versioned_without_uncommited_changes()
@@ -48,11 +50,11 @@ def train(config: str, log_periodicity: int = 100, dirty: bool = False):
     except KeyError:
         print(f"Unknown config: {config}")
         return
-    
+
     dm = WikipediaDataModule(model_config)
     model = Gpt(model_config)
-    
-    train_(model, model_config, dm, log_periodicity)
+
+    train_(model, model_config, dm, log_periodicity, profile)
 
 
 if __name__ == "__main__":
