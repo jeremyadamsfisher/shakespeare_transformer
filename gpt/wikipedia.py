@@ -104,6 +104,7 @@ class WikipediaDataModule(L.LightningDataModule):
         if Path(WIKIPEDIA_LOCAL_CACHE).exists():
             return
         ds = load_dataset(WIKIPEDIA_URI, split="train")
+        ds = ds.select(range(1000))
         logger.info("tokenizing wikipedia")
         ds = tokenize_wikipedia_dataset(
             ds,

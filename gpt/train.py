@@ -37,7 +37,7 @@ def train(
         dm.setup()
 
         n_params = sum(param.numel() for param in model.parameters())
-        n_tokens = len(dm.train_dataloader())
+        n_tokens = len(dm.X_trn)
         print(f"# parameters: {n_params}")
         print(f"# tokens: {n_tokens}")
         print(f"tokens/parameters: {n_tokens/n_params} (chinchilla-optimal is 20/1)")
