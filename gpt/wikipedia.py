@@ -60,34 +60,15 @@ class ShiftedSequenceDataset:
         return x, y
 
 
-class PrecomputedShiftedSequenceDataset:
-    def __init__(self, config, ds):
-        self.ds = ds
-        self.config = config
-
-    def __len__(self):
-        return len(self.ds)
-
-    def __getitem__(self, i):
-        tokens = self.ds[i]["tokens"]
-        x, y = tokens[:-1], tokens[1:]
-        return x, y
-
-
 def tokenize_wikipedia_dataset(
-    ds, tokenize: Callable[[str], Tensor], min_block_size, store_blockwise
+    ds, tokenize: Callable[[str], Tensor], min_block_size,
 ):
     def wikipedia_batch_process(batch: Dict[str, Sequence]) -> Dict[str, Sequence]:
         tokens_batch = []
         for text in batch["text"]:
             tokens = tokenize(text)
             if min_block_size <= len(tokens):
-                if store_blockwise:
-                    for i in range(len(tokens) - min_block_size + 1):
-                        subtokens = tokens[i : i + min_block_size]
-                        tokens_batch.append(subtokens)
-                else:
-                    tokens_batch.append(tokens)
+                tokens_batch.append(tokens)
         return {"tokens": tokens_batch}
 
     ds = ds.map(
@@ -130,29 +111,23 @@ class WikipediaDataModule(L.LightningDataModule):
             # We need a source block that is at least one token bigger than the
             # context width of the model
             min_block_size=self.config.block_size + 1,
-            store_blockwise=False,
         )
         dsx = ds.train_test_split(test_size=0.01)
         dsx.save_to_disk(WIKIPEDIA_LOCAL_CACHE)
 
     @lru_cache
     def _setup(self):
-        # Compute tokens and save to disk (may be called by lightning itself)
+        # Compute tokens and save to disk (may be called by lightning itself, but needs
+        # to be called before `setup()``)
         self.prepare_data()
 
         # Memory-map: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
         dsx = load_from_disk(WIKIPEDIA_LOCAL_CACHE).with_format("torch", dtype=torch.long)
-        # if self.profile:
-        if True:
+
+        if self.profile:
             dsx = dsx.select(range(25))
-        if False:
-            # Store everything with the blocks already in the right shape
-            self.X_trn = PrecomputedShiftedSequenceDataset(self.config, dsx["train"])
-            self.X_tst = PrecomputedShiftedSequenceDataset(self.config, dsx["test"])
-        else:
-            # Store all tokens, slice into them as neccesary
-            self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
-            self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])
+        self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
+        self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])
 
     def setup(self, stage=None):
         self._setup()
@@ -173,7 +148,3 @@ class WikipediaDataModule(L.LightningDataModule):
             num_workers=self.n_workers,
             pin_memory=True,
         )
-
-
-def collator(batch):
-    xs, ys = zip(*batch)
