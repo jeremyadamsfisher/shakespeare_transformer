@@ -4,8 +4,9 @@
 
 - [x] Reproducible training with bumpmyversion/docker
 - [ ] Resumable training
-- [ ] BPE/sentencepiece tokenization
-- [ ] Using all tokens in the dataset
+- [x] BPE/sentencepiece tokenization
+- [x] Using all tokens in the dataset
+- [ ] Evaluation
 
 This is a slightly remixed verion of the Transformer from [Karpathy's video](https://www.youtube.com/watch?v=kCc8FmEb1nY). I wrote it after following along with the video, then rewriting from my notes without consulting the original video or the code. It's derivative and mainly here to assess my own understanding of self-attention. I have extended it recently to learn more about the overall process of training LM's.
 
