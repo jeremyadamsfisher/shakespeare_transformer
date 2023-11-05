@@ -34,6 +34,7 @@ def train(
     profile=False,
 ):
     with wandb.init(project=PROJECT_ID, config={**config.dict()}) as run:
+        model = torch.compile(model)
         dm.setup()
         logger = L.loggers.WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, logger)
@@ -42,7 +43,7 @@ def train(
             callbacks=[log_cb, L.callbacks.EarlyStopping("tst_loss")],
             logger=[logger],
             val_check_interval=1000,
-            precision="16-mixed",
+            precision="b16-mixed",
             accelerator="auto",
             profiler="advanced" if profile else None,
             fast_dev_run=10 if profile else None,
