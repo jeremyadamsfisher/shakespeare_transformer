@@ -1,4 +1,5 @@
 import string
+from typing import List, Union
 
 import torch
 from unidecode import unidecode
@@ -22,8 +23,10 @@ class CharTokenizer:
         )
         return idxs
 
-    def decode(self, idxs: list[int]) -> str:
-        return "".join(self.idx2char[int(i.item())] for i in idxs)
+    def decode(self, idxs: Union[List[int], torch.Tensor]) -> str:
+        if isinstance(idxs, torch.Tensor):
+            idxs = idxs.cpu().tolist()
+        return "".join(self.idx2char[int(i)] for i in idxs)
 
     @property
     def vocab_size(self):
