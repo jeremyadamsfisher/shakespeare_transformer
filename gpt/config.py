@@ -69,3 +69,17 @@ gpt3_small = GptConfig(
     tokenizer="gpt2",
     vocab_size=50257,
 )
+
+# https://wandb.ai/jfisher40/gpt-shakespeare/runs/2a70mtrg/overview?workspace=user-jfisher40
+gpt_mini_v0 = GptConfig(
+    batch_size=128,
+    block_size=256,
+    learning_rate=0.001,
+    n_embed=512,
+    n_heads=8,
+    n_layers=8,
+    p_dropout=0.2,
+    n_epochs=1,
+    tokenizer=None,
+    vocab_size=75,
+)
