@@ -30,7 +30,7 @@ class ShiftedSequenceDataset:
         self.index = []
         for doc in tqdm(self.ds, unit="example", desc="Computing dataset index"):
             prev = self.index[-1] if self.index else 0
-            n_blocks = len(doc["tokens"]) // self.config.block_size
+            n_blocks = len(doc["tokens"]) // (self.config.block_size + 1)
             self.index.append(prev + n_blocks)
 
     def __len__(self):
