@@ -4,9 +4,23 @@
 
 ## Nov 5th, 2023 
 
+### v0.0.12
+
+Did something, generation is immediately better:
+
+> the spidet  in the all ware musculates, ussidessar
+
+I think it was loaded a cached tokenization of the dataset, but the token2number scheme changed each run.
+
+Tried a few optimizations:
+
+- Re-added `bf16-mixed`. This gives us 9-10 iterations per second.
+- Running with [assertions disabled](https://stackoverflow.com/questions/1273211/disable-assertions-in-python). This gives us 9-10 iterations per second.
+- Couldn't get `torch.compile` and triton working :\
+
 ### v0.0.11
 
-Add lru_cache in front of the pre-chunked tokens for speed.
+Add `lru_cache`` in front of the pre-chunked tokens for speed.
 
 Running an interactive session, it looks like my data is garbage! No wonder it wasn't generating anything interesting.
 
@@ -80,6 +94,6 @@ Config: `gpt_mini_v0`
 Dataset: [`wikipedia`](https://huggingface.co/datasets/wikipedia/viewer/20220301.en) (1 token/article)
 
 Selected generations:
-- sionry (1864). he is best known for many fasc
-- re guided. unfortunately,   von reek rangeren
-- red two japanese chicago derbys in 1998 being
+> sionry (1864). he is best known for many fasc
+> re guided. unfortunately,   von reek rangeren
+> red two japanese chicago derbys in 1998 being

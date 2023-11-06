@@ -10,7 +10,7 @@ class CharTokenizer:
         self.char2idx = {}
         self.idx2char = {}
 
-        unique_chars = set(string.printable.lower() + " –")
+        unique_chars = sorted(set(string.printable.lower() + " –"))
         for idx, char in enumerate(unique_chars):
             self.char2idx[char] = idx
             self.idx2char[idx] = char

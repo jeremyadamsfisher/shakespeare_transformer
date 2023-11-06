@@ -16,6 +16,7 @@ from tqdm import tqdm, trange
 from gpt.tokenizer import CharTokenizer
 
 WIKIPEDIA_URI = "wikipedia"
+N_ARTICLES = 1000
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
@@ -113,12 +114,12 @@ class WikipediaDataModule(L.LightningDataModule):
         
         texts = []
         iter_ds = iter(ds_full)
-        for _ in trange(1_000, desc="Downloading wikipedia"):
+        for _ in trange(N_ARTICLES, desc="Downloading wikipedia"):
             row = next(iter_ds)
             texts.append(row["text"])
 
         ds = Dataset.from_dict({"text": texts})
-        
+
         logger.info("tokenizing wikipedia")
         ds = tokenize_wikipedia_dataset(
             ds,

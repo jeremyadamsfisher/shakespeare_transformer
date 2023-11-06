@@ -61,6 +61,7 @@ def train(
             accelerator="auto",
             profiler="simple" if profile else None,
             fast_dev_run=10 if profile else None,
+            precision="bf16-mixed",
         )
         trainer.fit(model, dm)
         if not silent:
