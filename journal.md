@@ -4,6 +4,14 @@
 
 ## Nov 5th, 2023 
 
+### v0.0.14
+
+Fixed an off-by-one issue with the number of valid blocks.
+
+Saturday vRAM for gpt3-small config.
+
+Tripled the dataset size. (Aiming for a 7-8 hour training run.)
+
 ### v0.0.13
 
 Passed the block to the model, then created the shifted sequence within the model code. Still getting 9-10 iterations/second. Reverting.
