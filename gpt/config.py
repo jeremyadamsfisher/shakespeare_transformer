@@ -16,7 +16,7 @@ class GptConfig(BaseModel):
     p_dropout: float = 0.0
     lr: float = 1e-3
     test_train_split: float = 0.1
-    one_cycle_scheduler: Optional[bool] = False
+    one_cycle_scheduler: bool = False
 
     # tokenization
     vocab_size: int
@@ -39,6 +39,10 @@ gpt3_small = GptConfig(
 gpt3_small_char = gpt3_small.model_copy()
 gpt3_small_char.tokenizer = None
 gpt3_small_char.vocab_size = 75
+
+
+gpt3_small_char_one_cycle = gpt3_small_char.model_copy()
+gpt3_small_char_one_cycle.one_cycle_scheduler = True
 
 
 # https://wandb.ai/jfisher40/gpt-shakespeare/runs/2a70mtrg/overview?workspace=user-jfisher40

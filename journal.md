@@ -4,6 +4,12 @@
 
 ## Nov 5th, 2023 
 
+### v0.0.17
+
+Ran a char-gpt3-small but the loss immediately started going up: https://wandb.ai/jfisher40/gpt-shakespeare/runs/tefjimbq?workspace=user-jfisher40
+
+Trying one cycle.
+
 ### v0.0.16
 
 Removed unused code

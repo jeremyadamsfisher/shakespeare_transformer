@@ -43,20 +43,20 @@ def train(
         n_tokens = len(dm.X_trn) * config.block_size
         logger.info(f"num. parameters: {n_params}")
         logger.info(f"num. tokens: {n_tokens}")
-        logger.info(f"tokens/parameters: {n_tokens/n_params} (chinchilla-optimal is 20/1)")
+        logger.info(f"tokens/parameters: {n_tokens/n_params:.2f} (chinchilla-optimal is 20/1)")
 
         example, _  = next(iter(dm.train_dataloader()))
         first_example = example[0,:]
-        first_example = dm.decode(first_example)
-
+        first_example = dm.decode(first_example)[:100]
         logger.info(f"example batch (decoded): {first_example}")
 
         wandb_logger = None if silent else L.loggers.WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, wandb_logger)
+        lr_monitor = L.callbacks.LearningRateMonitor()
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
-            callbacks=[log_cb],
-            logger=[] if silent else [wandb_logger],
+            callbacks=[log_cb, lr_monitor],
+            logger=[L.loggers.csv_logs.CSVLogger("./csv_logs")] if silent else [wandb_logger],
             val_check_interval=1000,
             accelerator="auto",
             profiler="simple" if profile else None,

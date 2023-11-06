@@ -235,3 +235,6 @@ wandb/
 
 # Cached, semi-processed wikipedia data
 wikipedia_ds
+
+# Logs from dirty runs (i.e., not tracked)
+csv_logs
