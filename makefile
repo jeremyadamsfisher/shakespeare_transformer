@@ -1,5 +1,4 @@
 .PHONY: help
-CONFIG="baby"
 DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:$(shell bump-my-version show current_version)
 CONDA=micromamba
 
@@ -40,7 +39,7 @@ test:  ## run tests
 run:  ## run the training program
 	@TOKENIZERS_PARALLELISM=false \
 	 PYTHONPATH=. \
-	 	$(CONDA) run -n shakespeare python -O gpt/cli.py $(CONFIG) $(OPT)
+	 	$(CONDA) run -n shakespeare python -O gpt/cli.py $(OPT)
 
 rm_dataset:  # remove the cached dataset
 	@rm -rf wikipedia_ds

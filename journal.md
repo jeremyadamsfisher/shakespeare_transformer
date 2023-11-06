@@ -8,6 +8,16 @@
 
 Removed unused code
 
+Accidentally ran a baby gpt: https://wandb.ai/jfisher40/gpt-shakespeare/runs/2deftpzo/overview?workspace=user-jfisher40
+
+Pretty good results honestly:
+
+> year and 1993 cpus). however, new york city consti 
+> fierceptochemistry, protein welling procedure awak 
+> vowel of students "to quickly desire 90,000 to vow 
+
+Removed `baby` as default in the makefile. Now, we'll have to specify the config.
+
 ### v0.0.15
 
 Added gpt3 with character tokenization.
