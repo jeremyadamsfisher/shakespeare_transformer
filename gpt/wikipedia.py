@@ -16,7 +16,7 @@ from tqdm import tqdm, trange
 from gpt.tokenizer import CharTokenizer
 
 WIKIPEDIA_URI = "wikipedia"
-N_ARTICLES = 1000
+N_ARTICLES = 25_000
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
@@ -30,11 +30,8 @@ class ShiftedSequenceDataset:
         self.index = []
         for doc in tqdm(self.ds, unit="example", desc="Computing dataset index"):
             prev = self.index[-1] if self.index else 0
-            n_blocks = len(doc["tokens"]) - self.config.block_size + 1
-            # Note the we can't train on the last block because we
-            # we don't have a label for the next token
-            n_usable_blocks = n_blocks - 1
-            self.index.append(prev + n_usable_blocks)
+            n_blocks = len(doc["tokens"]) // self.config.block_size
+            self.index.append(prev + n_blocks)
 
     def __len__(self):
         return self.index[-1]
@@ -45,7 +42,7 @@ class ShiftedSequenceDataset:
             offset = i
         else:
             offset = i - self.index[ds_idx - 1]
-        return ds_idx, offset
+        return ds_idx, offset * self.config.block_size
     
     @lru_cache
     def get_tokens(self, i):
@@ -54,6 +51,7 @@ class ShiftedSequenceDataset:
     def __getitem__(self, i):
         ds_idx, offset = self._get_idx_and_offset(i)
         tokens = self.get_tokens(ds_idx)
+        
         x = tokens[offset : offset + self.config.block_size]
         y = tokens[offset + 1 : offset + self.config.block_size + 1]
 

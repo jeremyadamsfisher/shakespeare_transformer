@@ -44,6 +44,7 @@ def train(
             "baby": C.gpt_baby,
             "small": C.gpt3_small,
             "mini_v0": C.gpt_mini_v0,
+            "mini_v1": C.gpt_mini_v1,
         }[config.replace("-", "_").lower()]
     except KeyError:
         print(f"Unknown config: {config}")

@@ -40,7 +40,7 @@ def train(
         dm.setup()
 
         n_params = sum(param.numel() for param in model.parameters())
-        n_tokens = len(dm.X_trn)
+        n_tokens = len(dm.X_trn) * config.block_size
         logger.info(f"num. parameters: {n_params}")
         logger.info(f"num. tokens: {n_tokens}")
         logger.info(f"tokens/parameters: {n_tokens/n_params} (chinchilla-optimal is 20/1)")

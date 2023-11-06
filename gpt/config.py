@@ -50,6 +50,11 @@ gpt_mini_v0 = GptConfig(
     vocab_size=75,
 )
 
+# Using half precision, trying a bigger batch
+gpt_mini_v1 = gpt_mini_v0.model_copy()
+gpt_mini_v1.batch_size = 180
+
+
 # baby gpt https://github.com/karpathy/nanoGPT/blob/master/config/train_shakespeare_char.py
 gpt_baby = GptConfig(
     batch_size=64,
