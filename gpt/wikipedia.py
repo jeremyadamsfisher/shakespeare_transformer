@@ -16,7 +16,7 @@ from tqdm import tqdm, trange
 from gpt.tokenizer import CharTokenizer
 
 WIKIPEDIA_URI = "wikipedia"
-N_ARTICLES = 25_000
+N_ARTICLES = 75_000
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
