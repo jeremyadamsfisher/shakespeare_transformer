@@ -80,19 +80,17 @@ def find_lr(config: str, fname="./lr.png"):
         print(f"Unknown config: {config}")
         return
 
-    trainer = L.Trainer(
-        max_epochs=model_config.n_epochs,
-        accelerator="cpu"
-    )
+    logger.info("initializing model and tuner")
+    trainer = L.Trainer()
     tuner = L.tuner.Tuner(trainer)
     model = Gpt(model_config)
-
     dm = WikipediaDataModule(model_config, profile=False)
     dm.setup()
-
     model.train_dataloader = dm.train_dataloader
 
+    logger.info("finding the learning rate")
     lr_finder = tuner.lr_find(model)
+
     suggested_lr = lr_finder.suggestion()
     logger.info("suggested lr: {}", suggested_lr)
 

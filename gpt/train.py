@@ -59,7 +59,7 @@ def train(
 
         wandb_logger = None if silent else L.loggers.WandbLogger()
         log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, wandb_logger)
-        lr_monitor = L.callbacks.LearningRateMonitor()
+        lr_monitor = L.callbacks.LearningRateMonitor(logging_interval="step")
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
             callbacks=[log_cb, lr_monitor],
@@ -71,6 +71,7 @@ def train(
             profiler="simple" if profile else None,
             fast_dev_run=10 if profile else None,
             precision="bf16-mixed",
+            accumulate_grad_batches=config.accumulate_grad_batches,
         )
         trainer.fit(model, dm)
         if not silent:
