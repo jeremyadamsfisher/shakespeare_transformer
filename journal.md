@@ -4,6 +4,10 @@
 
 ## Nov 5th, 2023 
 
+### v0.0.16
+
+Removed unused code
+
 ### v0.0.15
 
 Added gpt3 with character tokenization.
