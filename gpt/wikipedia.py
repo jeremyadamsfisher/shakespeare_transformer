@@ -1,4 +1,3 @@
-from functools import lru_cache
 import multiprocessing as mp
 from bisect import bisect
 from functools import lru_cache
@@ -7,7 +6,7 @@ from typing import Callable, Dict, Sequence
 
 import pytorch_lightning as L
 import torch
-from datasets import load_dataset, load_from_disk, Dataset
+from datasets import Dataset, load_dataset, load_from_disk
 from loguru import logger
 from torch import Tensor
 from torch.utils.data import DataLoader
@@ -43,7 +42,7 @@ class ShiftedSequenceDataset:
         else:
             offset = i - self.index[ds_idx - 1]
         return ds_idx, offset * self.config.block_size
-    
+
     @lru_cache
     def get_tokens(self, i):
         return self.ds[i]["tokens"]
@@ -51,7 +50,7 @@ class ShiftedSequenceDataset:
     def __getitem__(self, i):
         ds_idx, offset = self._get_idx_and_offset(i)
         tokens = self.get_tokens(ds_idx)
-        
+
         x = tokens[offset : offset + self.config.block_size]
         y = tokens[offset + 1 : offset + self.config.block_size + 1]
 
@@ -65,7 +64,9 @@ class ShiftedSequenceDataset:
 
 
 def tokenize_wikipedia_dataset(
-    ds, tokenize: Callable[[str], Tensor], min_block_size,
+    ds,
+    tokenize: Callable[[str], Tensor],
+    min_block_size,
 ):
     def wikipedia_batch_process(batch: Dict[str, Sequence]) -> Dict[str, Sequence]:
         tokens_batch = []
@@ -102,14 +103,15 @@ class WikipediaDataModule(L.LightningDataModule):
         if config.vocab_size != tokenizer.vocab_size:
             raise ValueError(f"please set vocab size to {tokenizer.vocab_size}")
 
-    @lru_cache
     def prepare_data(self):
         """Save dataset to cache directory"""
         if Path(WIKIPEDIA_LOCAL_CACHE).exists():
             return
-        
-        ds_full = load_dataset(WIKIPEDIA_URI, "20220301.en", split="train", streaming=True)
-        
+
+        ds_full = load_dataset(
+            WIKIPEDIA_URI, "20220301.en", split="train", streaming=True
+        )
+
         texts = []
         iter_ds = iter(ds_full)
         for _ in trange(N_ARTICLES, desc="Downloading wikipedia"):
@@ -131,8 +133,14 @@ class WikipediaDataModule(L.LightningDataModule):
 
     @lru_cache
     def _setup(self):
+
+        # Idempotent, so no harm in programming defensively here
+        self.prepare_data()
+
         # Memory-map: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
-        dsx = load_from_disk(WIKIPEDIA_LOCAL_CACHE).with_format("torch", dtype=torch.long)
+        dsx = load_from_disk(WIKIPEDIA_LOCAL_CACHE).with_format(
+            "torch", dtype=torch.long
+        )
 
         if self.profile:
             dsx = dsx.select(range(25))

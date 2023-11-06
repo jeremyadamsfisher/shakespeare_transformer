@@ -4,11 +4,27 @@
 
 ## Nov 5th, 2023 
 
+### v0.0.18
+
+Ran gpt3-small-one cycle: https://wandb.ai/jfisher40/gpt-shakespeare/runs/x5i0gsq7?workspace=user-jfisher40
+
+ - Test loss going down after two epochs, which is already an improvement.
+
+Implemented an auto learning rate finder ingress (`gpt/cli.py find-lr`) using the [built-in LR finder from pytorch_lightning](https://lightning.ai/docs/pytorch/2.1.0/advanced/training_tricks.html#using-lightning-s-built-in-lr-finder).
+
+Sylvain Gugger found that this allowed higher maximum learning rates than what would be suggested by the lr finder approach (i.e., allowing use of the minima, rather than the steepest part of the curve).
+
+> Surprisingly, applying this policy even allows us to pick larger maximum learning rates, closer to the minimum of the plot we draw when using the learning rate finder. Those trainings are a bit more dangerous in the sense that the loss can go too far away and make the whole thing diverge. In those cases, it can be worth to try with a longer cycle before going to a slower learning rate, since a long warm-up seems to help.
+
+https://sgugger.github.io/the-1cycle-policy.html
+
 ### v0.0.17
 
 Ran a char-gpt3-small but the loss immediately started going up: https://wandb.ai/jfisher40/gpt-shakespeare/runs/tefjimbq?workspace=user-jfisher40
 
 Trying one cycle.
+
+Adding a learning rate reporter so I can keep track of that .
 
 ### v0.0.16
 

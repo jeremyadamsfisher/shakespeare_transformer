@@ -26,6 +26,7 @@ class LogGenerationPeriodically(L.Callback):
                 self.wandb_logger.log_text("trn/generation", columns=columns, data=data)
             logger.info("generation: {}", output)
 
+
 def train(
     model,
     config: GptConfig,
@@ -34,7 +35,11 @@ def train(
     profile=False,
     silent=True,
 ):
-    manager = nullcontext if silent else lambda: wandb.init(project=PROJECT_ID, config={**config.dict()})
+    manager = (
+        nullcontext
+        if silent
+        else lambda: wandb.init(project=PROJECT_ID, config={**config.dict()})
+    )
     with manager() as run:
         dm.prepare_data()
         dm.setup()
@@ -43,10 +48,12 @@ def train(
         n_tokens = len(dm.X_trn) * config.block_size
         logger.info(f"num. parameters: {n_params}")
         logger.info(f"num. tokens: {n_tokens}")
-        logger.info(f"tokens/parameters: {n_tokens/n_params:.2f} (chinchilla-optimal is 20/1)")
+        logger.info(
+            f"tokens/parameters: {n_tokens/n_params:.2f} (chinchilla-optimal is 20/1)"
+        )
 
-        example, _  = next(iter(dm.train_dataloader()))
-        first_example = example[0,:]
+        example, _ = next(iter(dm.train_dataloader()))
+        first_example = example[0, :]
         first_example = dm.decode(first_example)[:100]
         logger.info(f"example batch (decoded): {first_example}")
 
@@ -56,7 +63,9 @@ def train(
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
             callbacks=[log_cb, lr_monitor],
-            logger=[L.loggers.csv_logs.CSVLogger("./csv_logs")] if silent else [wandb_logger],
+            logger=[L.loggers.csv_logs.CSVLogger("./csv_logs")]
+            if silent
+            else [wandb_logger],
             val_check_interval=1000,
             accelerator="auto",
             profiler="simple" if profile else None,

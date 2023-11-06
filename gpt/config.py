@@ -22,6 +22,7 @@ class GptConfig(BaseModel):
     vocab_size: int
     tokenizer: Optional[str] = None  # No tokenizer should give a character tokenization
 
+
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1, pg. 8
 gpt3_small = GptConfig(
     batch_size=2,
