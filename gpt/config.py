@@ -36,6 +36,11 @@ gpt3_small = GptConfig(
     vocab_size=50257,
 )
 
+gpt3_small_char = gpt3_small.model_copy()
+gpt3_small_char.tokenizer = None
+gpt3_small_char.vocab_size = 75
+
+
 # https://wandb.ai/jfisher40/gpt-shakespeare/runs/2a70mtrg/overview?workspace=user-jfisher40
 gpt_mini_v0 = GptConfig(
     batch_size=128,

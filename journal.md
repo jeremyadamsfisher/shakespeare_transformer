@@ -4,6 +4,10 @@
 
 ## Nov 5th, 2023 
 
+### v0.0.15
+
+Added gpt3 with character tokenization.
+
 ### v0.0.14
 
 Fixed an off-by-one issue with the number of valid blocks.
@@ -12,13 +16,17 @@ Saturday vRAM for gpt3-small config.
 
 Tripled the dataset size. (Aiming for a 7-8 hour training run.)
 
+Running `gpt3-small`: https://wandb.ai/jfisher40/gpt-shakespeare/runs/ar581m1u
+
+Training loss is stagnant. Let's retry with character tokenization.
+
 ### v0.0.13
 
 Passed the block to the model, then created the shifted sequence within the model code. Still getting 9-10 iterations/second. Reverting.
 
 Added a `mini_v1` configuration that saturates vRAM on my 3090 with the same baseline model. (By increasing batch size.)
 
-Tokens blocks are now non-overlapping. The previous method re-used tokens within the same epoch. If we want to re-use tokens, we should probably just increase the size of the wikipedia subset. Attention is a set operation, so I don't think the token order matters -- but 
+Tokens blocks are now non-overlapping. The previous method re-used tokens within the same epoch. If we want to re-use tokens, we should probably just increase the size of the wikipedia subset. Attention is a set operation, so I don't think the token order matters -- but dataset size definitely does
 
 Added more wikipedia articles to increase the total number of 
 

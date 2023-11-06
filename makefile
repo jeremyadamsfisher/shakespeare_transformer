@@ -38,7 +38,9 @@ test:  ## run tests
 	@PYTHONPATH=. pytest -vv
 
 run:  ## run the training program
-	@PYTHONPATH=. $(CONDA) run -n shakespeare python -O gpt/cli.py $(CONFIG) $(OPT)
+	@TOKENIZERS_PARALLELISM=false \
+	 PYTHONPATH=. \
+	 	$(CONDA) run -n shakespeare python -O gpt/cli.py $(CONFIG) $(OPT)
 
 rm_dataset:  # remove the cached dataset
 	@rm -rf wikipedia_ds

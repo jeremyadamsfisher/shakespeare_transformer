@@ -43,6 +43,7 @@ def train(
         model_config = {
             "baby": C.gpt_baby,
             "small": C.gpt3_small,
+            "small_char": C.gpt3_small_char,
             "mini_v0": C.gpt_mini_v0,
             "mini_v1": C.gpt_mini_v1,
         }[config.replace("-", "_").lower()]
