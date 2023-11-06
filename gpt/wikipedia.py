@@ -1,3 +1,4 @@
+from functools import lru_cache
 import multiprocessing as mp
 from bisect import bisect
 from functools import lru_cache
@@ -6,15 +7,15 @@ from typing import Callable, Dict, Sequence
 
 import pytorch_lightning as L
 import torch
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, Dataset
 from loguru import logger
 from torch import Tensor
 from torch.utils.data import DataLoader
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from gpt.tokenizer import CharTokenizer
 
-WIKIPEDIA_URI = "jeremyf/tiny_wikipedia_en"
+WIKIPEDIA_URI = "wikipedia"
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
@@ -44,10 +45,14 @@ class ShiftedSequenceDataset:
         else:
             offset = i - self.index[ds_idx - 1]
         return ds_idx, offset
+    
+    @lru_cache
+    def get_tokens(self, i):
+        return self.ds[i]["tokens"]
 
     def __getitem__(self, i):
         ds_idx, offset = self._get_idx_and_offset(i)
-        tokens = self.ds[ds_idx]["tokens"]
+        tokens = self.get_tokens(ds_idx)
         x = tokens[offset : offset + self.config.block_size]
         y = tokens[offset + 1 : offset + self.config.block_size + 1]
 
@@ -103,8 +108,17 @@ class WikipediaDataModule(L.LightningDataModule):
         """Save dataset to cache directory"""
         if Path(WIKIPEDIA_LOCAL_CACHE).exists():
             return
-        ds = load_dataset(WIKIPEDIA_URI, split="train")
-        ds = ds.select(range(1000))
+        
+        ds_full = load_dataset(WIKIPEDIA_URI, "20220301.en", split="train", streaming=True)
+        
+        texts = []
+        iter_ds = iter(ds_full)
+        for _ in trange(1_000, desc="Downloading wikipedia"):
+            row = next(iter_ds)
+            texts.append(row["text"])
+
+        ds = Dataset.from_dict({"text": texts})
+        
         logger.info("tokenizing wikipedia")
         ds = tokenize_wikipedia_dataset(
             ds,
@@ -118,15 +132,12 @@ class WikipediaDataModule(L.LightningDataModule):
 
     @lru_cache
     def _setup(self):
-        # Compute tokens and save to disk (may be called by lightning itself, but needs
-        # to be called before `setup()``)
-        self.prepare_data()
-
         # Memory-map: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
         dsx = load_from_disk(WIKIPEDIA_LOCAL_CACHE).with_format("torch", dtype=torch.long)
 
         if self.profile:
             dsx = dsx.select(range(25))
+
         self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
         self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])
 

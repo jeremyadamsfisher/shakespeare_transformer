@@ -1,4 +1,5 @@
 import tempfile
+from contextlib import nullcontext
 
 import pytorch_lightning as L
 import torch
@@ -25,38 +26,47 @@ class LogGenerationPeriodically(L.Callback):
                 self.wandb_logger.log_text("trn/generation", columns=columns, data=data)
             logger.info("generation: {}", output)
 
-
 def train(
     model,
     config: GptConfig,
     dm: L.LightningDataModule,
     log_periodicity=100,
     profile=False,
+    silent=True,
 ):
-    with wandb.init(project=PROJECT_ID, config={**config.dict()}) as run:
+    manager = nullcontext if silent else lambda: wandb.init(project=PROJECT_ID, config={**config.dict()})
+    with manager() as run:
+        dm.prepare_data()
         dm.setup()
 
         n_params = sum(param.numel() for param in model.parameters())
         n_tokens = len(dm.X_trn)
-        print(f"# parameters: {n_params}")
-        print(f"# tokens: {n_tokens}")
-        print(f"tokens/parameters: {n_tokens/n_params} (chinchilla-optimal is 20/1)")
+        logger.info(f"num. parameters: {n_params}")
+        logger.info(f"num. tokens: {n_tokens}")
+        logger.info(f"tokens/parameters: {n_tokens/n_params} (chinchilla-optimal is 20/1)")
 
-        logger = L.loggers.WandbLogger()
-        log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, logger)
+        example, _  = next(iter(dm.train_dataloader()))
+        first_example = example[0,:]
+        first_example = dm.decode(first_example)
+
+        logger.info(f"example batch (decoded): {first_example}")
+
+        wandb_logger = None if silent else L.loggers.WandbLogger()
+        log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, wandb_logger)
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
             callbacks=[log_cb],
-            logger=[logger],
+            logger=[] if silent else [wandb_logger],
             val_check_interval=1000,
             accelerator="auto",
             profiler="simple" if profile else None,
             fast_dev_run=10 if profile else None,
         )
         trainer.fit(model, dm)
-        with tempfile.NamedTemporaryFile(suffix=".ckpt") as f:
-            torch.save(model.state_dict(), f.name)
-            artifact = wandb.Artifact("model", type="model")
-            artifact.add_file(f.name)
-            run.log_artifact(artifact)
+        if not silent:
+            with tempfile.NamedTemporaryFile(suffix=".ckpt") as f:
+                torch.save(model.state_dict(), f.name)
+                artifact = wandb.Artifact("model", type="model")
+                artifact.add_file(f.name)
+                run.log_artifact(artifact)
         return model

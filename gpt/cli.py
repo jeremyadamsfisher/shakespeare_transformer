@@ -41,11 +41,9 @@ def train(
 
     try:
         model_config = {
-            "micro": C.gpt_micro,
-            "micro_char": C.gpt_micro_char,
-            "mini_v0_baseline": C.gpt_mini_v0,
-            "gpt3_small": C.gpt3_small,
-            "gpt3_smaller": C.gpt3_smaller,
+            "baby": C.gpt_baby,
+            "small": C.gpt3_small,
+            "mini_v0": C.gpt_mini_v0,
         }[config.replace("-", "_").lower()]
     except KeyError:
         print(f"Unknown config: {config}")
@@ -54,7 +52,7 @@ def train(
     dm = WikipediaDataModule(model_config, profile=profile)
     model = Gpt(model_config)
 
-    train_(model, model_config, dm, log_periodicity, profile)
+    train_(model, model_config, dm, log_periodicity, profile, silent=dirty)
 
 
 if __name__ == "__main__":

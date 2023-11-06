@@ -4,11 +4,27 @@
 
 ## Nov 5th, 2023 
 
+### v0.0.11
+
+Add lru_cache in front of the pre-chunked tokens for speed.
+
+Running an interactive session, it looks like my data is garbage! No wonder it wasn't generating anything interesting.
+
+```python
+>>> example, _  = next(iter(dm.train_dataloader()))
+>>> dm.decode(example[0,:])
+'`g/\\^~q|\\1 \\g(|\\|g<3p1|j1y y1b|6~ky@ ~0^~~ b|\\1 \\g(|\\|g<3p1|j1y y1b|6~ky@ ~00gky<g|\\qf|_3\\1g0|\\1 \\g|/~p`~(|\\|]3p,~p|^~p,\\q|gky<_jy fyq^|@3,<\\qb0|(|1k~|q\\,~|3]|g~6~p\\ |p3b\\ |q\\6b|gky<g0|g1|\\1 \\g(|\\|g/~fygk|1j^_3\\10|(|1k~|q\\,~|3]|g~6~p\\ |j?g?|q\\6b|gky<g001p\\'
+```
+
 ### v0.0.10
 
 Ensmallening dataset by 10x (240h to 24h).
 
 Running `gpt_mini_v0`: https://wandb.ai/jfisher40/gpt-shakespeare/runs/2azvtzer?workspace=user-jfisher40
+
+Getting 6-7 iterations per second.
+
+Intermediate results look terrible.
 
 ### v0.0.9
 
