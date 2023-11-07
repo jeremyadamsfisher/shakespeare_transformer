@@ -22,6 +22,10 @@ Also, check out the blog post where I delve into [all the things I was wrong abo
 
 ## To do
 
+- [ ] Add weight tying
 - [ ] Resumable training
 - [ ] Perplexity and accuracy evaluation
 - [ ] Implement training schedule from the [Language Models are Few-Shot Learners](https://arxiv.org/pdf/2005.14165.pdf) paper (appendix, section B)
+- [ ] Compare performance with `nn.Transformer` and `torch.nn.functional.scaled_dot_product_attention`
+- [ ] Add datching of Q, K, V transform ([like so](https://github.com/karpathy/nanoGPT/blob/master/model.py#L56))
+- [ ] Researchy stuff like [ROPE embeddings](https://paperswithcode.com/method/rope) and [multi-query attention](https://paperswithcode.com/method/multi-query-attention)

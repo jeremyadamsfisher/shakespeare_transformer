@@ -10,6 +10,17 @@ This document is a hybrid changelog/research journal to document all my modeling
 
 Running gpt3-small-one-cycle with minor bug fix: https://wandb.ai/jfisher40/gpt-shakespeare/runs/xkknl263
 
+I keep on forgetting to write this down. TODO:
+
+- [ ] Check [Karpathy's dataloader](https://github.com/karpathy/nanoGPT/blob/master/data/shakespeare_char/prepare.py) implementation to see if he uses overlapping sequences or not
+- [ ] Implement [weight tying](https://paperswithcode.com/method/weight-tying)
+
+> Weight Tying improves the performance of language models by tying (sharing) the weights of the embedding and softmax layers. This method also massively reduces the total number of parameters in the language models that it is applied to.
+>
+> Language models are typically comprised of an embedding layer, followed by a number of Transformer or LSTM layers, which are finally followed by a softmax layer. Embedding layers learn word representations, such that similar words (in meaning) are represented by vectors that are near each other (in cosine distance). [Press & Wolf, 2016] showed that the softmax matrix, in which every word also has a vector representation, also exhibits this property. This leads them to propose to share the softmax and embedding matrices, which is done today in nearly all language models. 
+
+https://paperswithcode.com/method/weight-tying
+
 ### v0.0.19
 
 Ran the learning rate finder for lr_gpt3_small, looks kinda wonky:
@@ -21,7 +32,7 @@ It suggests 1e-5. This is about 1/2x what I was using previously (6e-4). That le
 We'll procede with using the 
 
 TODO:
-- [ ] implement the gpt3 scheduler 
+- [ ] implement the gpt3 scheduler
 
 Rerunning with the same learning rate, this time with learning rate logging so it's more clear what the effect of training your 
 
