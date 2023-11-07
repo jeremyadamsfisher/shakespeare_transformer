@@ -71,7 +71,7 @@ def train(
             profiler="simple" if profile else None,
             fast_dev_run=10 if profile else None,
             precision="bf16-mixed",
-            accumulate_grad_batches=config.accumulate_grad_batches,
+            accumulate_grad_batches=config.accumulate_grad_batches
         )
         trainer.fit(model, dm)
         if not silent:

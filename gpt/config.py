@@ -17,7 +17,7 @@ class GptConfig(BaseModel):
     lr: float = 1e-3
     test_train_split: float = 0.1
     one_cycle_scheduler: bool = False
-    accumulate_grad_batches: Optional[int] = None
+    accumulate_grad_batches: int = 1
 
     # tokenization
     vocab_size: int
