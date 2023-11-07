@@ -47,8 +47,12 @@ gpt3_small_char_one_cycle = gpt3_small_char.model_copy()
 gpt3_small_char_one_cycle.one_cycle_scheduler = True
 
 
-gpt3_small_char_one_cycle_larger_simulated_gradient = gpt3_small_char_one_cycle.model_copy()
-gpt3_small_char_one_cycle_larger_simulated_gradient.accumulate_grad_batches = 32 # i.e., batch size 64
+gpt3_small_char_one_cycle_larger_simulated_gradient = (
+    gpt3_small_char_one_cycle.model_copy()
+)
+gpt3_small_char_one_cycle_larger_simulated_gradient.accumulate_grad_batches = (
+    32  # i.e., batch size 64
+)
 
 
 # https://wandb.ai/jfisher40/gpt-shakespeare/runs/2a70mtrg/overview?workspace=user-jfisher40

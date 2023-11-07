@@ -2,8 +2,13 @@
 
 [Weights and Biases](https://wandb.ai/jfisher40/gpt-shakespeare?workspace=user-jfisher40)
 
+This document is a hybrid changelog/research journal to document all my modeling and infrastructure choices.
 
 ## Nov 6th, 2023
+
+## v0.0.20
+
+Running gpt3-small-one-cycle with minor bug fix: https://wandb.ai/jfisher40/gpt-shakespeare/runs/xkknl263
 
 ### v0.0.19
 

@@ -133,7 +133,6 @@ class WikipediaDataModule(L.LightningDataModule):
 
     @lru_cache
     def _setup(self):
-
         # Idempotent, so no harm in programming defensively here
         self.prepare_data()
 

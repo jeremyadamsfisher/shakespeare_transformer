@@ -97,5 +97,6 @@ def find_lr(config: str, fname="./lr.png"):
     fig = lr_finder.plot(suggest=True)
     fig.savefig(fname)
 
+
 if __name__ == "__main__":
     app()
