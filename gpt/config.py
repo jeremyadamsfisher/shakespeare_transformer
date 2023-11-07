@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 
 
 class GptConfig(BaseModel):
@@ -9,6 +9,9 @@ class GptConfig(BaseModel):
     n_embed: int
     n_heads: int
     n_layers: int
+    single_shot_attention: bool = False
+    flash: bool = False
+    batch_kqv: bool = False
 
     # training-specific
     batch_size: int
@@ -22,6 +25,14 @@ class GptConfig(BaseModel):
     # tokenization
     vocab_size: int
     tokenizer: Optional[str] = None  # No tokenizer should give a character tokenization
+
+    @root_validator
+    @classmethod
+    def valid(cls, field_values):
+        if field_values["flash"]:
+            err = "flash is only available if batch_kqv is enabled!"
+            assert field_values["batch_kqv"], err
+        return field_values
 
 
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1, pg. 8

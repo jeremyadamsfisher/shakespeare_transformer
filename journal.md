@@ -21,6 +21,13 @@ I keep on forgetting to write this down. TODO:
 
 https://paperswithcode.com/method/weight-tying
 
+Getting good results at 95000:
+> succeptic technology caused proteins to demonstra
+>  in 1989. the procedural review was the source of
+> lee was held by valid jacquir walker at a few octo
+
+Added more efficient transformer ops (batched QKV and flash attention) under the `batch_kqv` and `flash` configuration flags.
+
 ### v0.0.19
 
 Ran the learning rate finder for lr_gpt3_small, looks kinda wonky:

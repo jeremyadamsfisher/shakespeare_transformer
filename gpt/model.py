@@ -174,11 +174,92 @@ class MSA(nn.Module):
         return self.W(x)
 
 
+class SingleShotMSA(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.hs = self.config.n_embed // self.config.n_heads
+        self.kqv = nn.Linear(self.config.n_embed, 3 * self.config.n_embed, bias=False)
+        self.W = nn.Linear(self.config.n_embed, self.config.n_embed)
+        mask = torch.tril(torch.ones(config.block_size, config.block_size)) == 0
+        self.register_buffer("mask", mask)
+        self.config = config
+
+    def get_attention_mask(self, T):
+        """Get an attention mask for a sequence of length T
+
+        Examples:
+            >>> Attention().get_attention_mask(2)
+            torch.tensor([[0,1],
+                          [0,0]])
+        """
+        return self.mask[:T, :T]
+
+    def forward(self, x):
+        B, T, C = x.shape
+        # Attention needs to be parametric, so we begin with a learnable
+        # linear transformation of the input. This is expressed as a single
+        # matrix computation for efficiency
+        x = self.kqv(x)
+        assert x.shape == (B, T, 3 * C)
+
+        # Break up the kqv computation into their constituents and re-arrange
+        # them to be dotted with one another
+        k, q, v = rearrange(x, "b t (s c) -> s b t c", s=3)
+        k = rearrange(k, "b t (nh hs) -> b nh T hs", hs=self.hs)
+        q = rearrange(q, "b t (nh hs) -> b nh T hs", hs=self.hs)
+        v = rearrange(v, "b t (nh hs) -> b nh T hs", hs=self.hs)
+        if self.config.flash:
+            x = torch.nn.functional.scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=None,
+                dropout_p=self.config.dropout if self.training else 0,
+                is_causal=True,
+            )
+        else:
+            affinity_scores = q @ rearrange(k, "b nh T hs -> b nh hs T")
+            assert affinity_scores.shape == (B, self.hs, T, T)
+            # Softmax will quickly converge on producing one-hot vectors, whereas
+            # we want each output token to be a mix of the input tokens. So we
+            # normalize by the square root of the output dimensions.
+            affinity_scores /= math.sqrt(self.head_size)
+            # Recall that e^−∞ = 0. By setting the weights in the upper, right triangle
+            # of the attention to −∞, the softmax allocates those weights to the past
+            # and present tokens.
+            affinity_scores = affinity_scores.masked_fill(
+                self.get_attention_mask(T), -float("inf")
+            )
+            # Convert to a probability distribution
+            affinity = F.softmax(affinity_scores, dim=-1)
+            # Randomly drop some of the affinities to encourage regularization
+            affinity = self.dropout(affinity)
+            # Occasionally, dropouts produce NaNs, whereas we want 0s.
+            # https://discuss.pytorch.org/t/getting-nans-from-dropout-layer/70693
+            affinity = torch.nan_to_num(affinity, nan=0.0)
+            assert affinity.shape == (B, T, T)
+            # Consider the leftmost output token, which is the vector of dot products
+            # of the first row of attention and all the value channel columns for all
+            # tokens. Because all the logits are zero in the first row of attention
+            # except for the first one, that output token is just the corresponding
+            # value column. For the second output token, its the same matrix operation
+            # but the attention can be split between the first and second value columns.
+            # And so on.
+            x = affinity @ v
+        assert x.shape == (B, self.nh, T, self.hs)
+        # Concatenate the results
+        x = rearrange(x, "b nh t hs -> b t (nh hs)")
+        assert x.shape == (B, T, C)
+        # reweight the attention-transformed subspaces, see section 3.3
+        return self.W(x)
+
+
 class GptBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.norm_a = nn.LayerNorm(config.n_embed)
-        self.msa = MSA(config)
+        self.msa = SingleShotMSA(config) if config.batch_kqv else MSA(config)
         self.dropout_a = nn.Dropout(config.p_dropout)
         self.norm_b = nn.LayerNorm(config.n_embed)
         self.ffn = nn.Sequential(
