@@ -4,6 +4,17 @@
 
 This document is a hybrid changelog/research journal to document all my modeling and infrastructure choices.
 
+## Nov 7th, 2023
+
+Batching gm3-small increases from 2.5 to 3 interations/second. Using flask attention increases iterations from 3 to 6.5 iterations/second. Combined 2.6x speedup. Nice :D
+
+For comparison, loss goes to 0.9135
+
+TODO:
+- [ ] Verify the LR scheduler is actually working, since the LR monitor thing does NOT report any changes
+
+For now, rerunning with these optimizations to gain some confidence in lack of bugs.
+
 ## Nov 6th, 2023
 
 ## v0.0.20

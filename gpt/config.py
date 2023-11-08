@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 
 
 class GptConfig(BaseModel):
@@ -27,13 +27,11 @@ class GptConfig(BaseModel):
     vocab_size: int
     tokenizer: Optional[str] = None  # No tokenizer should give a character tokenization
 
-    @root_validator
-    @classmethod
-    def valid(cls, field_values):
-        if field_values["flash"]:
-            err = "flash is only available if batch_kqv is enabled!"
-            assert field_values["batch_kqv"], err
-        return field_values
+    @model_validator(mode='after')
+    def valid(self):
+        if self.batch_kqv is False and self.flash is True:
+            raise ValueError
+        return self
 
 
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1, pg. 8
@@ -48,6 +46,8 @@ gpt3_small = GptConfig(
     n_epochs=1,
     tokenizer="gpt2",
     vocab_size=50257,
+    batch_kqv=True,
+    flash=True,
 )
 
 gpt3_small_char = gpt3_small.model_copy()

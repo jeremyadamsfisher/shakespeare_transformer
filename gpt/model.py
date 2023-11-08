@@ -183,6 +183,7 @@ class SingleShotMSA(nn.Module, AttentionMaskMixin):
         self.hs = self.config.n_embed // self.config.n_heads
         self.kqv = nn.Linear(self.config.n_embed, 3 * self.config.n_embed, bias=False)
         self.W = nn.Linear(self.config.n_embed, self.config.n_embed)
+        self.dropout = nn.Dropout(config.p_dropout)
         mask = torch.tril(torch.ones(config.block_size, config.block_size)) == 0
         self.register_buffer("mask", mask)
         self.config = config
@@ -204,7 +205,7 @@ class SingleShotMSA(nn.Module, AttentionMaskMixin):
                 k,
                 v,
                 attn_mask=None,
-                dropout_p=self.config.dropout if self.training else 0,
+                dropout_p=self.config.p_dropout if self.training else 0,
                 is_causal=True,
             )
         else:
@@ -214,7 +215,7 @@ class SingleShotMSA(nn.Module, AttentionMaskMixin):
             # Softmax will quickly converge on producing one-hot vectors, whereas
             # we want each output token to be a mix of the input tokens. So we
             # normalize by the square root of the output dimensions.
-            affinity_scores /= math.sqrt(self.head_size)
+            affinity_scores /= math.sqrt(self.hs)
             # Recall that e^−∞ = 0. By setting the weights in the upper, right triangle
             # of the attention to −∞, the softmax allocates those weights to the past
             # and present tokens.
