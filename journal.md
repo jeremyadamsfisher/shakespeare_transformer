@@ -4,7 +4,15 @@
 
 This document is a hybrid changelog/research journal to document all my modeling and infrastructure choices.
 
-## Nov 7th, 2023
+## Nov 8th, 2023
+
+## v0.0.23
+
+Increased batch size to 4 with 32 gradient accumulation steps (i.e., simulated batch size of 128). Increased LR to 2e-4 for the one-cycle policy.
+
+Running gpt3-small-one-cycle.
+
+## v0.0.22
 
 Batching gm3-small increases from 2.5 to 3 interations/second. Using flask attention increases iterations from 3 to 6.5 iterations/second. Combined 2.6x speedup. Nice :D
 
@@ -13,7 +21,118 @@ For comparison, loss goes to 0.9135
 TODO:
 - [ ] Verify the LR scheduler is actually working, since the LR monitor thing does NOT report any changes
 
-For now, rerunning with these optimizations to gain some confidence in lack of bugs.
+For now, rerunning with these optimizations to gain some confidence in lack of bugs. Honestly, I'm pretty confident, since using flash attention means the only bug surface is in the QKV transform.
+
+Just peaked at `nvidia-smi`:
+
+```
+Wed Nov  8 10:08:16 2023       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 525.147.05   Driver Version: 525.147.05   CUDA Version: 12.0     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  NVIDIA GeForce ...  Off  | 00000000:0C:00.0  On |                  N/A |
+| 58%   66C    P2   342W / 350W |   9951MiB / 24576MiB |     99%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|    0   N/A  N/A       904      G   /usr/lib/xorg/Xorg                226MiB |
+|    0   N/A  N/A      1259      G   /usr/bin/gnome-shell               53MiB |
+|    0   N/A  N/A     13405      G   ...RendererForSitePerProcess       91MiB |
+|    0   N/A  N/A     13520      G   ...0/usr/lib/firefox/firefox      250MiB |
+|    0   N/A  N/A   2367168      C   python                           9324MiB |
++-----------------------------------------------------------------------------+
+```
+
+It's running at 1/2 the vRAM as before!!!
+
+We can definitely up the batch size. (Nice.)
+
+It seems that the scheduler only steps every epoch by default. 
+
+> If a learning rate scheduler is specified in configure_optimizers() with key "interval" (default “epoch”) in the scheduler configuration, Lightning will call the scheduler’s .step() method automatically in case of automatic optimization.
+
+([Source](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.configure_optimizers))
+
+Let's change that method.
+
+```python
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.config.lr)
+        if self.config.one_cycle_scheduler is False:
+            return optimizer
+        else:
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": torch.optim.lr_scheduler.OneCycleLR(
+                        optimizer,
+                        max_lr=self.config.lr,
+                        total_steps=self.trainer.estimated_stepping_batches,
+                    ),
+                    "interval": "step",
+                    "frequency": 1,  # Update the LR every step
+                    "monitor": "tst_loss",  # Not relevant for OneCycleLR
+                    "strict": True,  # Doesn't need to be strict because the monitor is irrelevant
+                },
+            }
+```
+
+My analysis here is based off incorrect assumptions
+
+> It suggests 1e-5. This is about 1/2x what I was using previously (6e-4). That learning rate is for the tokenized input, which is actually almost twice as big as my model (since the LM and embedding heads are enormous). In principle, you can use a larger learning rate for smaller models. Moreover, the training dynamics looked good for the previous run, which uses a larger learning rate than suggested by this algorithm.
+
+Looks like the earlier improvements in v0.0.18 comes from reducing the learning rate, rather than scheduling it. To be clear, the configuration is 6e-4, but bugged LR scheduler sets that to a flat 4e-5. So it looks like training slower is important, at least to begin with. However, I think we can get away with an even higher LR because the suggestion does NOT account for the fact that max LR rates can be much higher when using the one cycle policy. In fact, it really should be higher due to the fact that this model is a character-transformer, meaning that there are a LOT fewer parameters (80M vs 125M).
+
+What should the LR be going off the few shot papers?
+
+![](docs/few-shot-lrs.png)
+
+Well, that's power law-ish. So, a fitted power law does a good job matching the low-parameter models. Here's the code:
+
+
+```python
+import numpy as np
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
+
+# Data
+x = np.array([125, 350, 760, 1300, 2700, 6700, 13000, 175000]) * 1e6
+y = np.array([6, 3, 2.5, 2, 1.6, 1.2, 1, 0.6]) * 1e-4
+
+def power_law(x, a, b):
+    return a * (x ** b)
+
+# Fit the power law to the data
+(a, b), covariance = curve_fit(power_law, x, y)
+```
+
+Note,
+
+`(a,b) == (1.9518162170413254, -0.43679859313753605)`
+
+So:
+
+```python
+>>> lr_suggested, = y_fit = power_law(np.array([86.7])*1e6 * 10, a, b)
+>>> lr_suggested
+0.0002434023432448559
+```
+
+Let's change it to 2e-4
+
+TODO:
+- [ ] it would be cool to run the vocab size experiments
+
+Looks like it got keyboard interrupted by accident. I feel like this experiment was a success: I feel confident in the optimizations producing at least as good results as the original implementation. I'm ready to experiment with bigger batches and higher LRs at this point.
 
 ## Nov 6th, 2023
 
@@ -49,12 +168,12 @@ Ran the learning rate finder for lr_gpt3_small, looks kinda wonky:
 
 It suggests 1e-5. This is about 1/2x what I was using previously (6e-4). That learning rate is for the tokenized input, which is actually almost twice as big as my model (since the LM and embedding heads are enormous). In principle, you can use a larger learning rate for smaller models. Moreover, the training dynamics looked good for the previous run, which uses a larger learning rate than suggested by this algorithm.
 
-We'll procede with using the 
+We'll procede with using the original LR.
 
 TODO:
 - [ ] implement the gpt3 scheduler
 
-Rerunning with the same learning rate, this time with learning rate logging so it's more clear what the effect of training your 
+Rerunning with the same learning rate, this time with learning rate logging so it's more clear what the effect of training with a scheduler.
 
 ### v0.0.18
 
@@ -93,7 +212,7 @@ Ran a char-gpt3-small but the loss immediately started going up: https://wandb.a
 
 Trying one cycle.
 
-Adding a learning rate reporter so I can keep track of that .
+Adding a learning rate reporter so I can keep track of that.
 
 ### v0.0.16
 
@@ -151,7 +270,7 @@ Tried a few optimizations:
 
 ### v0.0.11
 
-Add `lru_cache`` in front of the pre-chunked tokens for speed.
+Add `lru_cache` in front of the pre-chunked tokens for speed?
 
 Running an interactive session, it looks like my data is garbage! No wonder it wasn't generating anything interesting.
 
@@ -175,7 +294,7 @@ Intermediate results look terrible.
 
 Parsing the [profiling logs](https://wandb.ai/jfisher40/gpt-shakespeare/runs/2m93vv6q/logs?workspace=user-jfisher40) show that all time was spent in the `val_next` and `train_dataloader_next` calls. Perhaps 
 
-I followed the [recommendations at huggingface](https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers) to improve dataloader performance and we're getting a 100x speed up! The trick was to save the dataset dict to disk, then re-load it. This enables memory mapping in the dataset object, which then gets passed to each worker; this allows each worker to access the data independantly. Previously, I guess we we're spending all of our time waiting for a resource lock. Might be interesting to loop into dataloader internals, because I thought that each process would get a 
+I followed the [recommendations at huggingface](https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers) to improve dataloader performance and we're getting a 100x speed up! The trick was to save the dataset dict to disk, then re-load it. This enables memory mapping in the dataset object, which then gets passed to each worker; this allows each worker to access the data independantly. Previously, I guess we we're spending all of our time waiting for a resource lock. Might be interesting to look into dataloader internals, because I thought that each process would get a code of the data and it wouldn't matter.
 
 Potential improvements/speedups:
 - Verify that the device transfer is relatively quick

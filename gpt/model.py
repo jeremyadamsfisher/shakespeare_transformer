@@ -48,12 +48,20 @@ class LM(L.LightningModule):
         if self.config.one_cycle_scheduler is False:
             return optimizer
         else:
-            scheduler = torch.optim.lr_scheduler.OneCycleLR(
-                optimizer,
-                max_lr=self.config.lr,
-                total_steps=self.trainer.estimated_stepping_batches,
-            )
-            return [optimizer], [scheduler]
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": torch.optim.lr_scheduler.OneCycleLR(
+                        optimizer,
+                        max_lr=self.config.lr,
+                        total_steps=self.trainer.estimated_stepping_batches,
+                    ),
+                    "interval": "step",
+                    "frequency": 1,  # Update the LR every step
+                    "monitor": "tst_loss",  # Not relevant for OneCycleLR
+                    "strict": True,  # Doesn't need to be strict because the monitor is irrelevant
+                },
+            }
 
     @torch.no_grad()
     def generate(self, idxs=None, max_new_tokens: int = 50):

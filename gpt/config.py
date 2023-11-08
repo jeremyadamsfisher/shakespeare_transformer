@@ -27,7 +27,7 @@ class GptConfig(BaseModel):
     vocab_size: int
     tokenizer: Optional[str] = None  # No tokenizer should give a character tokenization
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def valid(self):
         if self.batch_kqv is False and self.flash is True:
             raise ValueError
@@ -36,9 +36,10 @@ class GptConfig(BaseModel):
 
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1, pg. 8
 gpt3_small = GptConfig(
-    batch_size=2,
+    batch_size=4,
+    accumulate_grad_batches=32,
     block_size=2048,
-    learning_rate=6e-4,
+    lr=6e-4,
     n_embed=768,
     n_heads=12,
     n_layers=12,
@@ -57,6 +58,7 @@ gpt3_small_char.vocab_size = 75
 
 gpt3_small_char_one_cycle = gpt3_small_char.model_copy()
 gpt3_small_char_one_cycle.one_cycle_scheduler = True
+gpt3_small_char_one_cycle.lr = 2e-4  # See notes, v0.0.22
 
 
 gpt3_small_char_one_cycle_larger_simulated_gradient = (
