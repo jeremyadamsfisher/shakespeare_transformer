@@ -25,7 +25,7 @@ def get_run_name_from_git_tag():
     for tag in repo.tags:
         if tag.commit.hexsha == repo.head.commit.hexsha:
             assert re.match(r"v\d+\.\d+\.\d+", tag.name)
-            return f"run-{tag.name}-{uuid4}"
+            return f"run-{tag.name}-{uuid4()}"
 
     raise Exception("No version tag found in the current commit!")
 
