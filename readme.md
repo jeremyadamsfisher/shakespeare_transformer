@@ -13,9 +13,9 @@ It does have some nice features:
 
 Here are some example outputs (keep in mind this is a character model, so producing cohert words and grammar is one of the important/non-trivial regularities)
 
-> year and 1993 cpus). however, new york city consti 
-> fierceptochemistry, protein welling procedure awak 
-> vowel of students "to quickly desire 90,000 to vow 
+> alexander ii, italian-american people's last daugh
+> 44.90% of the population were below the five house
+> there is a natural history that can be still shut
 
 Also, check out the blog post where I delve into [all the things I was wrong about regarding self-attention](https://www.jeremyafisher.com/posts/notes-on-self-attention/). Writing this codebase inspired the blog post.
 

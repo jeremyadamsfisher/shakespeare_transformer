@@ -28,6 +28,8 @@ Getting good results at 95000:
 
 Added more efficient transformer ops (batched QKV and flash attention) under the `batch_kqv` and `flash` configuration flags.
 
+Generations are way too frequent.
+
 ### v0.0.19
 
 Ran the learning rate finder for lr_gpt3_small, looks kinda wonky:

@@ -12,6 +12,7 @@ class GptConfig(BaseModel):
     single_shot_attention: bool = False
     flash: bool = False
     batch_kqv: bool = False
+    weight_tying: bool = False
 
     # training-specific
     batch_size: int
