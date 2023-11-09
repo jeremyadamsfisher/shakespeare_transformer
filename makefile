@@ -21,13 +21,23 @@ lint:  ## clean up the source code
 	@isort .
 	@black .
 
-docker_build:  ## build and push the docker image
+docker_build:  ## build the docker image
 	@docker build -t $(DOCKER_IMG) .
+
+docker_push:  ## push the docker image
 	@docker push $(DOCKER_IMG) 
 
-docker_poke:  ## run interactive docker shell
-	@docker build -t $(DOCKER_IMG) .
-	@docker run --rm -ti $(DOCKER_IMG) 
+docker_poke: docker_build  ## run interactive docker shell
+	@docker run \
+		-e TOKENIZERS_PARALLELISM=false \
+		-e PYTHONPATH=. \
+		-e WANDB_AUTH=$(base64 < ~/.netrc) \
+		--gpus "all" \
+		--mount "type=bind,src=$(PWD),target=/app" \
+		--rm -ti \
+		$(DOCKER_IMG) \
+		bash
+
 
 lock:   ## lock the conda env
 	@conda-lock lock --kind explicit --micromamba -f env.cuda.yml -f env.yml -p linux-64
@@ -41,5 +51,16 @@ run:  ## run the training program
 	 PYTHONPATH=. \
 	 	$(CONDA) run -n shakespeare python -O gpt/cli.py train $(OPT)
 
-rm_dataset:  # remove the cached dataset
+rm_dataset:  ## remove the cached dataset
 	@rm -rf wikipedia_ds
+
+docker_train: docker_build  ## train on docker
+	@docker run \
+		-e TOKENIZERS_PARALLELISM=false \
+		-e PYTHONPATH=. \
+		-e WANDB_AUTH=$(base64 < ~/.netrc) \
+		--gpus "all" \
+		--mount "type=bind,src=$(PWD),target=/app" \
+		--rm -ti \
+		$(DOCKER_IMG) \
+		python -O gpt/cli.py train $(OPT)

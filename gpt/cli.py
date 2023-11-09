@@ -11,7 +11,10 @@ def check_for_repo_versioned_without_uncommited_changes():
     tag, throw an exception."""
     import git
 
-    repo = git.Repo(search_parent_directories=True)
+    try:
+        repo = git.Repo(search_parent_directories=True)
+    except git.exc.InvalidGitRepositoryError:
+        return False
 
     if not repo.head.is_valid():
         raise Exception("The current directory is not part of a Git repository.")
@@ -43,11 +46,14 @@ def get_model(config):
 
 @app.command()
 def train(
-    config: str, log_periodicity: int = 100, dirty: bool = False, profile: bool = False
+    config: str,
+    log_periodicity: int = 100,
+    dirty: bool = False,
+    profile: bool = False,
 ):
     # import here to avoid doing so for --help ingress
 
-    from gpt.model import Gpt
+    from gpt.lightning_module import GptLightning
     from gpt.train import train as train_
     from gpt.wikipedia import WikipediaDataModule
 
@@ -63,7 +69,7 @@ def train(
     logger.info("using config: {}", model_config)
 
     dm = WikipediaDataModule(model_config, profile=profile)
-    model = Gpt(model_config)
+    model = GptLightning(model_config, compile=True)
 
     train_(model, model_config, dm, log_periodicity, profile, silent=dirty)
 
@@ -72,7 +78,7 @@ def train(
 def find_lr(config: str, fname="./lr.png"):
     import pytorch_lightning as L
 
-    from gpt.model import Gpt
+    from gpt.lightning_module import GptLightning
     from gpt.wikipedia import WikipediaDataModule
 
     try:
@@ -84,7 +90,7 @@ def find_lr(config: str, fname="./lr.png"):
     logger.info("initializing model and tuner")
     trainer = L.Trainer()
     tuner = L.tuner.Tuner(trainer)
-    model = Gpt(model_config)
+    model = GptLightning(model_config, compile=False)
     dm = WikipediaDataModule(model_config, profile=False)
     dm.setup()
     model.train_dataloader = dm.train_dataloader

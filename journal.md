@@ -6,9 +6,27 @@ This document is a hybrid changelog/research journal to document all my modeling
 
 ## Nov 8th, 2023
 
+## v0.0.25
+
+Get `torch.compile` working in a docker container with about 4 iterations/second with gpt3-small-char. Needs a bit more work, specifically to patch in the wandb credentials, etc. This is a good project so we can make sure the docker image works before renting out a vastai instance. 
+
+Removing the compile step gives 4.28 :/
+
+Will leave it in for now, when I increase the batch size it seems to make no difference. Perhaps better GPUs will take better advantage of this.
+
+Made the training loop multi-GPU compatible for the hell of it.
+
+Running gpt-small-char with increased learning rate using the new docker stuff.
+
 ## v0.0.24
 
-Running gpt3-small-one-cycle-v2
+Running gpt3-small-one-cycle-v2: https://wandb.ai/jfisher40/gpt-shakespeare/runs/sejest2n/overview?workspace=user-jfisher40
+
+Final loss: 1.039
+
+Looks like the loss was highest when learning rate was 8e-4.
+
+Running gpt3-small-char with the learning rate suggested by the power law computation earlier (0.00025)
 
 ## v0.0.23
 
@@ -27,6 +45,8 @@ Analysis:
 
 TODO:
 - [x] Is this supposed to be cyclic? Should I be running this cycle more than once? Answer: no, that's expected
+
+Final loss: 1.133
 
 Added `gpt3-small-one-cycle-v2` with higher learning rate.
 

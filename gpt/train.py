@@ -36,8 +36,8 @@ class LogGenerationPeriodically(L.Callback):
         self.decoder = decoder
         self.wandb_logger = wandb_logger
 
-    def on_train_batch_start(self, _a, model, _b, batch_idx):
-        if batch_idx % self.log_periodicity == 0:
+    def on_train_batch_start(self, trainer, model, _b, batch_idx):
+        if batch_idx % self.log_periodicity == 0 and trainer.global_rank == 0:
             output = model.generate()
             output = self.decoder(output).replace("\n", " ")
             if self.wandb_logger:
@@ -68,12 +68,14 @@ def train(
         dm.prepare_data()
         dm.setup()
 
+        torch.set_float32_matmul_precision("medium")
+
         n_params = sum(param.numel() for param in model.parameters())
         n_tokens = len(dm.X_trn) * config.block_size
-        logger.info(f"num. parameters: {n_params}")
-        logger.info(f"num. tokens: {n_tokens}")
+        logger.info(f"num. parameters: {n_params:,d}")
+        logger.info(f"num. tokens: {n_tokens:,d}")
         logger.info(
-            f"tokens/parameters: {n_tokens/n_params:.2f} (chinchilla-optimal is 20/1)"
+            f"tokens/parameters: {n_tokens/n_params:.1f} (chinchilla-optimal is 20/1)"
         )
 
         example, _ = next(iter(dm.train_dataloader()))

@@ -43,10 +43,10 @@ class GptConfig(BaseModel):
 
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1, pg. 8
 gpt3_small = GptConfig(
-    batch_size=4,
-    accumulate_grad_batches=32,
+    batch_size=32,
+    accumulate_grad_batches=2,
     block_size=2048,
-    lr=6e-4,
+    lr=0.00025,
     n_embed=768,
     n_heads=12,
     n_layers=12,
@@ -56,7 +56,6 @@ gpt3_small = GptConfig(
     vocab_size=50257,
     batch_kqv=True,
     flash=True,
-
 )
 
 gpt3_small_char = gpt3_small.model_copy()
@@ -67,7 +66,6 @@ gpt3_small_char.vocab_size = 75
 gpt3_small_char_one_cycle = gpt3_small_char.model_copy()
 gpt3_small_char_one_cycle.one_cycle_scheduler = True
 gpt3_small_char_one_cycle.lr = 2e-4  # See notes, v0.0.22
-
 
 
 gpt3_small_char_one_cycle_v2 = gpt3_small_char_one_cycle.model_copy()
