@@ -68,8 +68,6 @@ def train(
         dm.prepare_data()
         dm.setup()
 
-        torch.set_float32_matmul_precision("medium")
-
         n_params = sum(param.numel() for param in model.parameters())
         n_tokens = len(dm.X_trn) * config.block_size
         logger.info(f"num. parameters: {n_params:,d}")

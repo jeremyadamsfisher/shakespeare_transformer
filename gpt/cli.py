@@ -50,6 +50,7 @@ def train(
     log_periodicity: int = 100,
     dirty: bool = False,
     profile: bool = False,
+    compile: bool = False
 ):
     # import here to avoid doing so for --help ingress
 
@@ -69,7 +70,7 @@ def train(
     logger.info("using config: {}", model_config)
 
     dm = WikipediaDataModule(model_config, profile=profile)
-    model = GptLightning(model_config, compile=True)
+    model = GptLightning(model_config, compile=compile)
 
     train_(model, model_config, dm, log_periodicity, profile, silent=dirty)
 

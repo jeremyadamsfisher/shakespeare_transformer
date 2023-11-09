@@ -238,3 +238,6 @@ wikipedia_ds
 
 # Logs from dirty runs (i.e., not tracked)
 csv_logs
+
+
+.secrets.json
