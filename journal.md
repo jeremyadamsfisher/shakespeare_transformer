@@ -6,7 +6,7 @@ This document is a hybrid changelog/research journal to document all my modeling
 
 ## Nov 8th, 2023
 
-## v0.0.25
+## v0.0.26
 
 Get `torch.compile` working in a docker container with about 4 iterations/second with gpt3-small-char. Needs a bit more work, specifically to patch in the wandb credentials, etc. This is a good project so we can make sure the docker image works before renting out a vastai instance. 
 

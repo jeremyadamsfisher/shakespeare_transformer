@@ -30,8 +30,8 @@ docker_push:  ## push the docker image
 docker_poke: docker_build  ## run interactive docker shell
 	@docker run \
 		-e TOKENIZERS_PARALLELISM=false \
-		-e PYTHONPATH=. \
-		-e WANDB_AUTH=$(base64 < ~/.netrc) \
+		-e "PYTHONPATH=." \
+		-e "WANDB_AUTH=$$(base64 < ~/.netrc)" \
 		--gpus "all" \
 		--mount "type=bind,src=$(PWD),target=/app" \
 		--rm -ti \
@@ -58,7 +58,7 @@ docker_train: docker_build  ## train on docker
 	@docker run \
 		-e TOKENIZERS_PARALLELISM=false \
 		-e PYTHONPATH=. \
-		-e WANDB_AUTH=$(base64 < ~/.netrc) \
+		-e "WANDB_AUTH=$$(base64 < ~/.netrc)" \
 		--gpus "all" \
 		--mount "type=bind,src=$(PWD),target=/app" \
 		--rm -ti \
