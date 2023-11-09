@@ -55,6 +55,9 @@ class LM(L.LightningModule):
                         optimizer,
                         max_lr=self.config.lr,
                         total_steps=self.trainer.estimated_stepping_batches,
+                        pct_start=self.config.one_cycle_config.pct_start,
+                        div_factor=self.config.one_cycle_config.div_factor,
+                        final_div_factor=self.config.one_cycle_config.final_div_factor,
                     ),
                     "interval": "step",
                     "frequency": 1,  # Update the LR every step

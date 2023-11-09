@@ -6,17 +6,35 @@ This document is a hybrid changelog/research journal to document all my modeling
 
 ## Nov 8th, 2023
 
+## v0.0.24
+
+Running gpt3-small-one-cycle-v2
+
 ## v0.0.23
 
 Increased batch size to 4 with 32 gradient accumulation steps (i.e., simulated batch size of 128). Increased LR to 2e-4 for the one-cycle policy.
 
-Running gpt3-small-one-cycle.
+Running gpt3-small-one-cycle: https://wandb.ai/jfisher40/gpt-shakespeare/runs/t4ec765m/overview?workspace=user-jfisher40
+
+This loss curve is FASCINATING.
+
+We learned earlier that a warm-up period is essential. A low learning rate (1e-5) is apropriate for this initial period. However, the test loss plateaus at 2.4 until it reaches it maximum at 2e-4. Then loss drops rapidly until reaching 1.3, at which point the learning rate starts to decrease. The loss plateaus at 1.7 for the remaining 1/4 of the run. The training loss and the test loss are similar.
+
+Analysis:
+- The training algorithm can sustain a much higher learning rate for more data. 
+- It absolutely needs to train at max learning rate for much longer
+- Perhaps we can use a simple warm-up followed by a high learning rate for most of the curve. Cool-down does not seem to be relevant here -- probably too little data to matter
+
+TODO:
+- [x] Is this supposed to be cyclic? Should I be running this cycle more than once? Answer: no, that's expected
+
+Added `gpt3-small-one-cycle-v2` with higher learning rate.
 
 ## v0.0.22
 
-Batching gm3-small increases from 2.5 to 3 interations/second. Using flask attention increases iterations from 3 to 6.5 iterations/second. Combined 2.6x speedup. Nice :D
+Batching gm3-small increases from 2.5 to 3 interations/second. Using flash attention increases iterations from 3 to 6.5 iterations/second. Combined 2.6x speedup. Nice :D
 
-For comparison, loss goes to 0.9135
+For future comparison, loss goes to 1.292.
 
 TODO:
 - [ ] Verify the LR scheduler is actually working, since the LR monitor thing does NOT report any changes

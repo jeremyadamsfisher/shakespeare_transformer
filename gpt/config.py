@@ -3,6 +3,12 @@ from typing import Optional
 from pydantic import BaseModel, model_validator
 
 
+class OneCycleLRConfig(BaseModel):
+    pct_start: float = 0.3
+    div_factor: float = 25
+    final_div_factor: float = 1e4
+
+
 class GptConfig(BaseModel):
     # architecture-specific
     block_size: int
@@ -21,6 +27,7 @@ class GptConfig(BaseModel):
     lr: float = 1e-3
     test_train_split: float = 0.1
     one_cycle_scheduler: bool = False
+    one_cycle_config: OneCycleLRConfig = OneCycleLRConfig()
     accumulate_grad_batches: int = 1
 
     # tokenization
@@ -49,6 +56,7 @@ gpt3_small = GptConfig(
     vocab_size=50257,
     batch_kqv=True,
     flash=True,
+
 )
 
 gpt3_small_char = gpt3_small.model_copy()
@@ -61,11 +69,14 @@ gpt3_small_char_one_cycle.one_cycle_scheduler = True
 gpt3_small_char_one_cycle.lr = 2e-4  # See notes, v0.0.22
 
 
-gpt3_small_char_one_cycle_larger_simulated_gradient = (
-    gpt3_small_char_one_cycle.model_copy()
-)
-gpt3_small_char_one_cycle_larger_simulated_gradient.accumulate_grad_batches = (
-    32  # i.e., batch size 64
+
+gpt3_small_char_one_cycle_v2 = gpt3_small_char_one_cycle.model_copy()
+gpt3_small_char_one_cycle_v2.one_cycle_scheduler = True
+gpt3_small_char_one_cycle_v2.lr = 1e-3  # See notes, v0.0.23
+gpt3_small_char_one_cycle_v2.one_cycle_config = OneCycleLRConfig(
+    pct_start=0.2,
+    div_factor=10,
+    final_div_factor=1,
 )
 
 
