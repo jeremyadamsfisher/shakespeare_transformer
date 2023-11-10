@@ -32,9 +32,11 @@ docker_run: docker_build ## run something in docker
 		-e TOKENIZERS_PARALLELISM=false \
 		-e PYTHONPATH=. \
 		-e "WANDB_API_KEY=$$(cat .secrets.json | jq -r .WANDB_API_KEY)" \
+		-e "SHAKESPEARE_TRANSFORMER_SAVE_TO=$$SHAKESPEARE_TRANSFORMER_SAVE_TO"
 		--gpus "all" \
 		--mount "type=bind,src=$(PWD),target=/app" \
-		--rm -ti \
+		--rm \
+		-ti \
 		$(DOCKER_IMG) \
 		$(OPT)
 

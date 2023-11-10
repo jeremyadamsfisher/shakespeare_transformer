@@ -1,3 +1,5 @@
+from typing import Optional
+from pathlib import Path
 from contextlib import nullcontext
 from uuid import uuid4
 import os
@@ -9,8 +11,11 @@ from gpt import PROJECT_ID, VERSION
 from gpt.config import GptConfig
 
 
-def get_run_name():
-    return f"run-v{VERSION}-{uuid4()}"
+def get_run_name(load_from: Optional[str]):
+    if load_from:
+        return Path(load_from).parent.name
+    else:
+        return f"run-v{VERSION}-{uuid4()}"
 
 
 class LogGenerationPeriodically(L.Callback):
@@ -26,7 +31,7 @@ class LogGenerationPeriodically(L.Callback):
             if self.wandb_logger:
                 columns = ["generation"]
                 data = [[output]]
-                self.wandb_logger.log_text("trn/generation", columns=columns, data=data)
+                self.wandb_logger.log_text("trn_generation", columns=columns, data=data)
             logger.info("generation: {}", output)
 
 
@@ -40,13 +45,16 @@ def train(
     load_from=None,
     save_to=None,
 ):
+    name = get_run_name(load_from)
     manager = (
         nullcontext
         if disable_wandb
         else lambda: wandb.init(
             project=PROJECT_ID,
             config={**config.dict()},
-            name=get_run_name(),
+            name=name,
+            id=name,
+            resume=bool(load_from),
         )
     )
     with manager():
@@ -61,7 +69,8 @@ def train(
         logger.info(f"num. parameters: {n_params:,d}")
         logger.info(f"num. tokens: {n_tokens:,d}")
         logger.info(
-            f"tokens/parameters: {n_tokens/n_params:.1f} (chinchilla-optimal is 20/1)"
+            f"tokens/parameters: {n_tokens/n_params:.1f} "
+            f"(chinchilla-optimal is 20/1)"
         )
 
         example, _ = next(iter(dm.train_dataloader()))
@@ -78,8 +87,12 @@ def train(
 
         if save_to:
             model_cb = L.callbacks.ModelCheckpoint(
-                dir_path=os.path.join(save_to, get_run_name()),
-                filename='shakespeare-transformer-{epoch}-{tst_loss:.2f}'
+                dirpath=os.path.join(save_to, name),
+                filename='{epoch}-{tst_loss:.2f}',
+                every_n_train_steps=100,
+                save_top_k=1,
+                mode="min",
+                monitor="tst_loss",
             )
             callbacks.append(model_cb)
 
@@ -89,7 +102,7 @@ def train(
             logger=[L.loggers.csv_logs.CSVLogger("./csv_logs")]
             if disable_wandb
             else [wandb_logger],
-            val_check_interval=1000,
+            val_check_interval=100,
             accelerator="auto",
             profiler="simple" if profile else None,
             fast_dev_run=10 if profile else None,

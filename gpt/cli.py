@@ -5,7 +5,6 @@ from typing import Optional
 from typing_extensions import Annotated
 import typer
 from loguru import logger
-from typer import Argument
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -57,13 +56,13 @@ def train(
     profile: bool = False,
     save_to: Annotated[
         Optional[str],
-        Argument(
+        typer.Option(
             help="Checkpoint directory to save to. A UUID will be added. If unspecified, do not save the checkpoint"
         ),
     ] = None,
     load_from: Annotated[
         Optional[str],
-        Argument(
+        typer.Option(
             help="Checkpoint directory to load from. Please specify the UUID. If unspecified, do not load from a checkpoint"
         ),
     ] = None,
@@ -74,6 +73,7 @@ def train(
     from gpt.lightning_module import GptLightning
     from gpt.train import train as train_
     from gpt.wikipedia import WikipediaDataModule
+
 
     if dirty is False:
         check_for_repo_versioned_without_uncommited_changes()
@@ -94,6 +94,9 @@ def train(
         logger.info("Using model checkpointing directory from SHAKESPEARE_TRANSFORMER_SAVE_TO: {}", save_to_env_var)
         save_to = save_to_env_var
     
+    if save_to and load_from:
+        raise ValueError("If loading from a checkpoint, you should save to the same directory!")
+
     train_(
         model,
         model_config,
