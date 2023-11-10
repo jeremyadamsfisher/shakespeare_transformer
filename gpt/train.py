@@ -1,33 +1,16 @@
-import re
-import tempfile
 from contextlib import nullcontext
 from uuid import uuid4
-
-import git
+import os
 import pytorch_lightning as L
-import torch
 import wandb
 from loguru import logger
 
-from gpt import PROJECT_ID
+from gpt import PROJECT_ID, VERSION
 from gpt.config import GptConfig
 
 
-def get_run_name_from_git_tag():
-    """If the current commit has unstaged/uncommited changes or lacks a version
-    tag, throw an exception."""
-
-    repo = git.Repo(search_parent_directories=True)
-
-    if not repo.head.is_valid():
-        raise Exception("The current directory is not part of a Git repository.")
-
-    for tag in repo.tags:
-        if tag.commit.hexsha == repo.head.commit.hexsha:
-            assert re.match(r"v\d+\.\d+\.\d+", tag.name)
-            return f"run-{tag.name}-{uuid4()}"
-
-    raise Exception("No version tag found in the current commit!")
+def get_run_name():
+    return f"run-v{VERSION}-{uuid4()}"
 
 
 class LogGenerationPeriodically(L.Callback):
@@ -63,7 +46,7 @@ def train(
         else lambda: wandb.init(
             project=PROJECT_ID,
             config={**config.dict()},
-            name=get_run_name_from_git_tag(),
+            name=get_run_name(),
         )
     )
     with manager():
@@ -95,7 +78,7 @@ def train(
 
         if save_to:
             model_cb = L.callbacks.ModelCheckpoint(
-                dir_path=save_to,
+                dir_path=os.path.join(save_to, get_run_name()),
                 filename='shakespeare-transformer-{epoch}-{tst_loss:.2f}'
             )
             callbacks.append(model_cb)

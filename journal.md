@@ -16,7 +16,7 @@ Will leave it in for now, when I increase the batch size it seems to make no dif
 
 Made the training loop multi-GPU compatible for the hell of it.
 
-Running gpt-small-char with increased learning rate using the new docker stuff.
+Running gpt-small-char with increased learning rate using the new docker stuff: https://wandb.ai/jfisher40/gpt-shakespeare/runs/y16802t7?workspace=user-jfisher40
 
 Trying to figure out how people count tokens. I downloaded 75K articles and tokenized them. With a block size of 2048, there are 426,488 non-overlapping blocks. Multiplying these together, we get 873,447,424 character tokens.
 
@@ -36,6 +36,10 @@ Here are the cost data for training on all of wikipedia:
 | 3090 |           24 |      1 |         0 |                 32 |                   32 |                 1 |  1190002.441 | 330.5562337 | 13.77317641 |           0 |
 | 3090 |           24 |      4 |     1.321 |                 32 |                  128 |                 1 |  297500.6104 | 82.63905843 | 3.443294101 | 109.1661962 |
 | A100 |           40 |      2 |     3.202 |                 50 |                  100 |                 1 |  380800.7813 | 105.7779948 |  4.40741645 | 338.7011393 |
+
+[Finished training](https://wandb.ai/jfisher40/gpt-shakespeare/runs/y16802t7?workspace=user-jfisher40) in record time: 4h! Also the lowest validation loss of 0.942. Still seeing the bizarre staircase curvature, even with a constant learning rate. Is there a hidden warmup? So weird.
+
+I should try 10x the learning rate.
 
 ## Nov 8th, 2023
 
