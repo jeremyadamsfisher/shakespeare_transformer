@@ -4,9 +4,9 @@
 
 This document is a hybrid changelog/research journal to document all my modeling and infrastructure choices.
 
-## Nov 8th, 2023
+## Nov 9th, 2023
 
-## v0.0.26
+## v0.0.27
 
 Get `torch.compile` working in a docker container with about 4 iterations/second with gpt3-small-char. Needs a bit more work, specifically to patch in the wandb credentials, etc. This is a good project so we can make sure the docker image works before renting out a vastai instance. 
 
@@ -17,6 +17,27 @@ Will leave it in for now, when I increase the batch size it seems to make no dif
 Made the training loop multi-GPU compatible for the hell of it.
 
 Running gpt-small-char with increased learning rate using the new docker stuff.
+
+Trying to figure out how people count tokens. I downloaded 75K articles and tokenized them. With a block size of 2048, there are 426,488 non-overlapping blocks. Multiplying these together, we get 873,447,424 character tokens.
+
+Let's assume 5 letters/word, and 3/4 token per word. That gives us 0.15 tokens/letter, which is 131,017,113 tokens.
+
+That's from 75K articles, but there are 6.7M articles on English wikipedia. That's 1%. So (6,742,357/75,000) * 131,017,113 = 11,778,188,652.7 = 11B tokens. This isn't exactly the 3B that the few shot paper indicates, but since we only samples 1% of the data, its a reasonable difference.
+
+**Conclusion**: they are counting every token in the block, not just the last one. 
+
+Here are the cost data for training on all of wikipedia:
+
+| GPU  | vRAM per GPU | n GPUS | Cost/Hour | Batch size per GPU | Estimated batch size | Seconds per Batch | Time seconds | Time Hours  | Time days   | Total cost  |
+|------|--------------|--------|-----------|--------------------|----------------------|-------------------|--------------|-------------|-------------|-------------|
+| 4090 |           24 |      4 |      1.68 |                 32 |                  128 |                 1 |  297500.6104 | 82.63905843 | 3.443294101 | 138.8336182 |
+| 4090 |           24 |      2 |     0.463 |                 32 |                   64 |                 1 |  595001.2207 | 165.2781169 | 6.886588203 | 76.52376811 |
+| 3090 |           24 |      2 |     0.367 |                 32 |                   64 |                 1 |  595001.2207 | 165.2781169 | 6.886588203 | 60.65706889 |
+| 3090 |           24 |      1 |         0 |                 32 |                   32 |                 1 |  1190002.441 | 330.5562337 | 13.77317641 |           0 |
+| 3090 |           24 |      4 |     1.321 |                 32 |                  128 |                 1 |  297500.6104 | 82.63905843 | 3.443294101 | 109.1661962 |
+| A100 |           40 |      2 |     3.202 |                 50 |                  100 |                 1 |  380800.7813 | 105.7779948 |  4.40741645 | 338.7011393 |
+
+## Nov 8th, 2023
 
 ## v0.0.24
 
