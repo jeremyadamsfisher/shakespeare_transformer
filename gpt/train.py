@@ -1,12 +1,13 @@
-from typing import Optional
-from pathlib import Path
-from contextlib import nullcontext
-from uuid import uuid4
 import os
+from contextlib import nullcontext
+from pathlib import Path
+from typing import Optional
+from uuid import uuid4
+
 import pytorch_lightning as L
-import wandb
 from loguru import logger
 
+import wandb
 from gpt import PROJECT_ID, VERSION
 from gpt.config import GptConfig
 
@@ -39,7 +40,7 @@ def train(
     model,
     config: GptConfig,
     dm: L.LightningDataModule,
-    log_periodicity=100,
+    log_periodicity=500,
     profile=False,
     disable_wandb=True,
     load_from=None,
@@ -88,8 +89,8 @@ def train(
         if save_to:
             model_cb = L.callbacks.ModelCheckpoint(
                 dirpath=os.path.join(save_to, name),
-                filename='{epoch}-{tst_loss:.2f}',
-                every_n_train_steps=100,
+                filename="{epoch}-{tst_loss:.2f}",
+                every_n_train_steps=10_000,
                 save_top_k=1,
                 mode="min",
                 monitor="tst_loss",
@@ -102,7 +103,7 @@ def train(
             logger=[L.loggers.csv_logs.CSVLogger("./csv_logs")]
             if disable_wandb
             else [wandb_logger],
-            val_check_interval=100,
+            val_check_interval=1000,
             accelerator="auto",
             profiler="simple" if profile else None,
             fast_dev_run=10 if profile else None,

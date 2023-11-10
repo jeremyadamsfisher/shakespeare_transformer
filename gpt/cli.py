@@ -1,10 +1,11 @@
+import ast
 import os
 import re
 from typing import Optional
 
-from typing_extensions import Annotated
 import typer
 from loguru import logger
+from typing_extensions import Annotated
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -66,7 +67,7 @@ def train(
             help="Checkpoint directory to load from. Please specify the UUID. If unspecified, do not load from a checkpoint"
         ),
     ] = None,
-    compile: bool = False
+    compile: bool = False,
 ):
     # import here to avoid doing so for --help ingress
 
@@ -74,8 +75,9 @@ def train(
     from gpt.train import train as train_
     from gpt.wikipedia import WikipediaDataModule
 
-
-    if dirty is False:
+    if dirty is False or ast.literal_eval(
+        os.environ.get("SHAKESPEARE_TRANSFORMER_IGNORE_GIT", "False")
+    ):
         check_for_repo_versioned_without_uncommited_changes()
 
     try:
@@ -91,11 +93,16 @@ def train(
 
     save_to_env_var = os.environ.get("SHAKESPEARE_TRANSFORMER_SAVE_TO")
     if save_to is None and save_to_env_var:
-        logger.info("Using model checkpointing directory from SHAKESPEARE_TRANSFORMER_SAVE_TO: {}", save_to_env_var)
+        logger.info(
+            "Using model checkpointing directory from SHAKESPEARE_TRANSFORMER_SAVE_TO: {}",
+            save_to_env_var,
+        )
         save_to = save_to_env_var
-    
+
     if save_to and load_from:
-        raise ValueError("If loading from a checkpoint, you should save to the same directory!")
+        raise ValueError(
+            "If loading from a checkpoint, you should save to the same directory!"
+        )
 
     train_(
         model,
