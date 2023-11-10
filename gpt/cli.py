@@ -1,7 +1,10 @@
+import os
 import re
+from typing import Optional
 
 import typer
 from loguru import logger
+from typer import Annotated, Argument
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -49,7 +52,20 @@ def train(
     config: str,
     log_periodicity: int = 100,
     dirty: bool = False,
+    disable_wandb: bool = False,
     profile: bool = False,
+    save_to: Annotated[
+        Optional[str],
+        Argument(
+            help="Checkpoint directory to save to. A UUID will be added. If unspecified, do not save the checkpoint"
+        ),
+    ] = None,
+    load_from: Annotated[
+        Optional[str],
+        Argument(
+            help="Checkpoint directory to load from. Please specify the UUID. If unspecified, do not load from a checkpoint"
+        ),
+    ] = None,
     compile: bool = False
 ):
     # import here to avoid doing so for --help ingress
@@ -72,7 +88,24 @@ def train(
     dm = WikipediaDataModule(model_config, profile=profile)
     model = GptLightning(model_config, compile=compile)
 
-    train_(model, model_config, dm, log_periodicity, profile, silent=dirty)
+    if load_from is None:
+        model.init_weights()
+
+    save_to_env_var = os.get("SHAKESPEARE_TRANSFORMER_SAVE_TO")
+    if save_to is None and save_to_env_var:
+        logger.info("Pulling model checkpointing directory from SHAKESPEARE_TRANSFORMER_SAVE_TO: {}", save_to_env_var)
+        save_to = save_to_env_var
+
+    train_(
+        model,
+        model_config,
+        dm,
+        log_periodicity,
+        profile,
+        disable_wandb=disable_wandb,
+        load_from=load_from,
+        save_to=save_to,
+    )
 
 
 @app.command()

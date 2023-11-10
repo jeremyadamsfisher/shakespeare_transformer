@@ -109,6 +109,7 @@ class SingleShotMSA(nn.Module, AttentionMaskMixin):
 
     def forward(self, x):
         B, T, C = x.shape
+        assert C == self.config.n_embed
         # Attention needs to be parametric, so we begin with a learnable
         # linear transformation of the input. This is expressed as a single
         # matrix computation for efficiency
@@ -200,15 +201,17 @@ class Gpt(nn.Module):
         if config.weight_tying:
             self.token_embedding.weight = self.lm_head.weight
 
-        self.apply(self._init_weights)
-
-    def _init_weights(self, module):
+    @staticmethod
+    def _init_weights(module):
         if isinstance(module, nn.Linear):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+    def init_weights(self):
+        self.apply(self._init_weights)
 
     def forward(self, idxs):
         B, T = idxs.shape

@@ -6,9 +6,9 @@ from uuid import uuid4
 import git
 import pytorch_lightning as L
 import torch
+import wandb
 from loguru import logger
 
-import wandb
 from gpt import PROJECT_ID
 from gpt.config import GptConfig
 
@@ -53,11 +53,13 @@ def train(
     dm: L.LightningDataModule,
     log_periodicity=100,
     profile=False,
-    silent=True,
+    disable_wandb=True,
+    load_from=None,
+    save_to=None,
 ):
     manager = (
         nullcontext
-        if silent
+        if disable_wandb
         else lambda: wandb.init(
             project=PROJECT_ID,
             config={**config.dict()},
@@ -81,14 +83,25 @@ def train(
         first_example = dm.decode(first_example)[:100]
         logger.info(f"example batch (decoded): {first_example}")
 
-        wandb_logger = None if silent else L.loggers.WandbLogger()
-        log_cb = LogGenerationPeriodically(dm.decode, log_periodicity, wandb_logger)
-        lr_monitor = L.callbacks.LearningRateMonitor(logging_interval="step")
+        wandb_logger = None if disable_wandb else L.loggers.WandbLogger()
+
+        callbacks = [
+            LogGenerationPeriodically(dm.decode, log_periodicity, wandb_logger),
+            L.callbacks.LearningRateMonitor(logging_interval="step"),
+        ]
+
+        if save_to:
+            model_cb = L.callbacks.ModelCheckpoint(
+                dir_path=save_to,
+                filename='shakespeare-transformer-{epoch}-{tst_loss:.2f}'
+            )
+            callbacks.append(model_cb)
+
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
-            callbacks=[log_cb, lr_monitor],
+            callbacks=callbacks,
             logger=[L.loggers.csv_logs.CSVLogger("./csv_logs")]
-            if silent
+            if disable_wandb
             else [wandb_logger],
             val_check_interval=1000,
             accelerator="auto",
@@ -96,12 +109,11 @@ def train(
             fast_dev_run=10 if profile else None,
             precision="bf16-mixed",
             accumulate_grad_batches=config.accumulate_grad_batches,
+            default_root_dir=save_to,
         )
-        trainer.fit(model, dm)
-        if not silent:
-            with tempfile.NamedTemporaryFile(suffix=".ckpt") as f:
-                torch.save(model.state_dict(), f.name)
-                artifact = wandb.Artifact("model", type="model")
-                artifact.add_file(f.name)
-                run.log_artifact(artifact)
+        if load_from:
+            trainer.fit(model, dm, ckpt_path=load_from)
+        else:
+            trainer.fit(model, dm)
+
         return model
