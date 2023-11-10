@@ -8,6 +8,6 @@ INSTANCE_ID=$(echo $INSTANCE | jq -r .id)
 
 vastai create instance $INSTANCE_ID \
     --image jeremyadamsfisher1123/shakespeare-gpt:0.0.6 \
-    --env "-e WANDB_AUTH=$(base64 < ~/.netrc)" \
+    --env "-e WANDB_API_KEY=$(cat .secrets.json | jq -r .WANDB_API_KEY)" \
     --disk 64 \
     --ssh
