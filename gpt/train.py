@@ -66,7 +66,10 @@ def train(
             name=get_run_name_from_git_tag(),
         )
     )
-    with manager() as run:
+    with manager():
+        if load_from is None:
+            model.init_weights()
+
         dm.prepare_data()
         dm.setup()
 

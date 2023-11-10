@@ -31,7 +31,6 @@ docker_run: docker_build ## run something in docker
 	@docker run \
 		-e TOKENIZERS_PARALLELISM=false \
 		-e PYTHONPATH=. \
-		-e "WANDB_AUTH=$$(base64 < ~/.netrc)" \
 		-e "WANDB_API_KEY=$$(cat .secrets.json | jq -r .WANDB_API_KEY)" \
 		--gpus "all" \
 		--mount "type=bind,src=$(PWD),target=/app" \

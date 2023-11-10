@@ -2,9 +2,10 @@ import os
 import re
 from typing import Optional
 
+from typing_extensions import Annotated
 import typer
 from loguru import logger
-from typer import Annotated, Argument
+from typer import Argument
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -88,14 +89,11 @@ def train(
     dm = WikipediaDataModule(model_config, profile=profile)
     model = GptLightning(model_config, compile=compile)
 
-    if load_from is None:
-        model.init_weights()
-
-    save_to_env_var = os.get("SHAKESPEARE_TRANSFORMER_SAVE_TO")
+    save_to_env_var = os.environ.get("SHAKESPEARE_TRANSFORMER_SAVE_TO")
     if save_to is None and save_to_env_var:
-        logger.info("Pulling model checkpointing directory from SHAKESPEARE_TRANSFORMER_SAVE_TO: {}", save_to_env_var)
+        logger.info("Using model checkpointing directory from SHAKESPEARE_TRANSFORMER_SAVE_TO: {}", save_to_env_var)
         save_to = save_to_env_var
-
+    
     train_(
         model,
         model_config,
