@@ -6,8 +6,11 @@ INSTANCE=$(vastai search offers --on-demand 'gpu_name=RTX_3090 geolocation=US' -
 echo Found instance: $INSTANCE
 INSTANCE_ID=$(echo $INSTANCE | jq -r .id)
 
+make docker_push
+
+PYTHONPATH=. \
 vastai create instance $INSTANCE_ID \
-    --image jeremyadamsfisher1123/shakespeare-gpt:0.0.6 \
+    --image jeremyadamsfisher1123/shakespeare-gpt:$(python -c 'import gpt; print(gpt.version)') \
     --env "-e WANDB_API_KEY=$(cat .secrets.json | jq -r .WANDB_API_KEY)" \
     --disk 64 \
     --ssh

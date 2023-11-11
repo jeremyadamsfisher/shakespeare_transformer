@@ -12,6 +12,8 @@ Added resumable training.
 
 I think we're ready for VastAI.
 
+Let's give ourselves a challenge of training on all of wikipedia.
+
 ## v0.0.27
 
 Get `torch.compile` working in a docker container with about 4 iterations/second with gpt3-small-char. Needs a bit more work, specifically to patch in the wandb credentials, etc. This is a good project so we can make sure the docker image works before renting out a vastai instance. 

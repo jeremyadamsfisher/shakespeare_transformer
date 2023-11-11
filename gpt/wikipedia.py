@@ -15,7 +15,7 @@ from tqdm import tqdm, trange
 from gpt.tokenizer import CharTokenizer
 
 WIKIPEDIA_URI = "wikipedia"
-N_ARTICLES = 75_000
+N_ARTICLES = None  # All
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
@@ -108,17 +108,20 @@ class WikipediaDataModule(L.LightningDataModule):
         if Path(WIKIPEDIA_LOCAL_CACHE).exists():
             return
 
-        ds_full = load_dataset(
-            WIKIPEDIA_URI, "20220301.en", split="train", streaming=True
-        )
+        if N_ARTICLES:
+            ds_full = load_dataset(
+                WIKIPEDIA_URI, "20220301.en", split="train", streaming=True
+            )
+            texts = []
+            iter_ds = iter(ds_full)
+            for _ in trange(N_ARTICLES, desc="Downloading wikipedia"):
+                row = next(iter_ds)
+                texts.append(row["text"])
 
-        texts = []
-        iter_ds = iter(ds_full)
-        for _ in trange(N_ARTICLES, desc="Downloading wikipedia"):
-            row = next(iter_ds)
-            texts.append(row["text"])
-
-        ds = Dataset.from_dict({"text": texts})
+            ds = Dataset.from_dict({"text": texts})
+        else:
+            ds = load_dataset(WIKIPEDIA_URI, "20220301.en", split="train")
+            ds = ds.select_columns(["text"])
 
         logger.info("tokenizing wikipedia")
         ds = tokenize_wikipedia_dataset(
