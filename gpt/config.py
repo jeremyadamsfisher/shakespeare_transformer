@@ -43,8 +43,8 @@ class GptConfig(BaseModel):
 
 # See: https://arxiv.org/pdf/2005.14165.pdf table 2.1, pg. 8
 gpt3_small = GptConfig(
-    batch_size=8,
-    accumulate_grad_batches=8,
+    batch_size=4,
+    accumulate_grad_batches=16,
     block_size=2048,
     lr=0.00025,
     n_embed=768,
