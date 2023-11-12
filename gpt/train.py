@@ -170,7 +170,7 @@ def train(
         callbacks = [
             LearningRateMonitor(logging_interval="step"),
             LogGenerationPeriodically(
-                dm.decode, log_periodicity, None if disable_wandb else logger
+                dm.decode, log_periodicity, None if disable_wandb else logger_
             ),
         ]
 
