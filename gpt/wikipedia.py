@@ -1,10 +1,12 @@
 import gzip
 import json
 import multiprocessing as mp
+import os
 from bisect import bisect
 from pathlib import Path
 from typing import Callable, Dict, Sequence
 
+import hydra
 import pytorch_lightning as L
 import torch
 from datasets import Dataset, load_dataset, load_from_disk
@@ -16,7 +18,6 @@ from tqdm import tqdm, trange
 from gpt.tokenizer import CharTokenizer
 
 WIKIPEDIA_URI = "wikipedia"
-N_ARTICLES = None  # All
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
@@ -75,7 +76,7 @@ class ShiftedSequenceDataset:
 
     def __getitem__(self, i):
         ds_idx, offset = self._get_idx_and_offset(i)
-        tokens = self.ds[i]["tokens"]
+        tokens = self.ds[ds_idx]["tokens"]
         x = tokens[offset : offset + self.config.block_size]
         y = tokens[offset + 1 : offset + self.config.block_size + 1]
 
@@ -117,12 +118,13 @@ class WikipediaDataModule(L.LightningDataModule):
     """Data module for wikipedia. Fairly generic and can should be able to be
     adapted for any huggingface dataset."""
 
-    def __init__(self, config, n_workers=mp.cpu_count(), profile=False):
+    def __init__(self, n_articles, config, n_workers=mp.cpu_count(), profile=False):
         super().__init__()
         self.config = config
         self.n_workers = 0 if profile else n_workers
         self.profile = profile
         self.batch_size = config.batch_size
+        self.n_articles = n_articles
 
         if config.tokenizer is not None:
             from transformers import AutoTokenizer
@@ -138,16 +140,17 @@ class WikipediaDataModule(L.LightningDataModule):
 
     def prepare_data(self):
         """Save dataset to cache directory"""
-        if Path(WIKIPEDIA_LOCAL_CACHE).exists():
+        self.fp = os.path.join(hydra.utils.get_original_cwd(), WIKIPEDIA_LOCAL_CACHE)
+        if Path(self.fp).exists():
             return
 
-        if N_ARTICLES:
+        if self.n_articles:
             ds_full = load_dataset(
                 WIKIPEDIA_URI, "20220301.en", split="train", streaming=True
             )
             texts = []
             iter_ds = iter(ds_full)
-            for _ in trange(N_ARTICLES, desc="Downloading wikipedia"):
+            for _ in trange(self.n_articles, desc="Downloading wikipedia"):
                 row = next(iter_ds)
                 texts.append(row["text"])
             ds = Dataset.from_dict({"text": texts})
@@ -164,7 +167,7 @@ class WikipediaDataModule(L.LightningDataModule):
             min_block_size=self.config.block_size + 1,
         )
         dsx = ds.train_test_split(test_size=0.0025)
-        dsx.save_to_disk(WIKIPEDIA_LOCAL_CACHE)
+        dsx.save_to_disk(self.fp)
 
     def setup(self, stage=None):
         """Load dataset from cache directory. Re-loading from the disk is important
@@ -178,19 +181,17 @@ class WikipediaDataModule(L.LightningDataModule):
         self.prepare_data()
 
         # Memory-map: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
-        dsx = load_from_disk(WIKIPEDIA_LOCAL_CACHE).with_format(
-            "torch", dtype=torch.long
-        )
+        dsx = load_from_disk(self.fp).with_format("torch", dtype=torch.long)
 
         self.X_trn = ShiftedSequenceDataset(
             self.config,
             dsx["train"],
-            Path(WIKIPEDIA_LOCAL_CACHE) / "wikipedia-index-trn.json.gz",
+            Path(self.fp) / "wikipedia-index-trn.json.gz",
         )
         self.X_tst = ShiftedSequenceDataset(
             self.config,
             dsx["test"],
-            Path(WIKIPEDIA_LOCAL_CACHE) / "wikipedia-index-tst.json.gz",
+            Path(self.fp) / "wikipedia-index-tst.json.gz",
         )
 
     def train_dataloader(self):

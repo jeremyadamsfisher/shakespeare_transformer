@@ -1,5 +1,5 @@
 .PHONY: help
-DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:$(shell bump-my-version show current_version)
+DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:$(python -c "import gpt; print(gpt.VERSION)")
 CONDA=micromamba
 
 help:
@@ -8,55 +8,28 @@ help:
 bump:  ## bump patch version
 	@bump-my-version bump patch
 
-nuke:  ## remove current training environment
-	@$(CONDA) remove -n shakespeare --all
-
-bootstrap:  ## install training environment
-	@conda-lock install --micromamba conda-linux-64.lock --name shakespeare
-
-bootstrap_mac:  ## install training environment (mac)
-	@conda-lock install --micromamba conda-osx-arm64.lock --name shakespeare
-
 lint:  ## clean up the source code
 	@isort .
 	@black .
 
-docker_build:  ## build the docker image
-	@docker build -t $(DOCKER_IMG) .
+build:  ## build the docker image
+	@cog build -t $(DOCKER_IMG) .
 
-docker_push:  ## push the docker image
-	@docker push $(DOCKER_IMG) 
+push:  ## push the docker image
+	@cog push $(DOCKER_IMG) 
 
-docker_run: docker_build ## run something in docker
-	@docker run \
-		-e TOKENIZERS_PARALLELISM=false \
+run:  ## run something in docker
+	@cog run \
 		-e PYTHONPATH=. \
+		-e TOKENIZERS_PARALLELISM=false \
 		-e "WANDB_API_KEY=$$(cat .secrets.json | jq -r .WANDB_API_KEY)" \
-		-e "SHAKESPEARE_TRANSFORMER_SAVE_TO=$$SHAKESPEARE_TRANSFORMER_SAVE_TO"
-		--gpus "all" \
-		--mount "type=bind,src=$(PWD),target=/app" \
-		--rm \
-		-ti \
-		$(DOCKER_IMG) \
 		$(OPT)
 
-docker_train: docker_build  ## train on docker
-	@$(MAKE) docker_run OPT="python -O gpt/cli.py train $(OPT)"
+poke:  ## run interactive docker shell
+	@$(MAKE) train OPT=bash
 
-docker_poke: docker_build  ## run interactive docker shell
-	@$(MAKE) docker_run OPT=bash
-
-lock:   ## lock the conda env
-	@conda-lock lock --kind explicit --micromamba -f env.cuda.yml -f env.yml -p linux-64
-	@conda-lock lock --kind explicit --micromamba -f env.yml -p osx-arm64
-
-test:  ## run tests
-	@PYTHONPATH=. pytest -vv
-
-run:  ## run the training program
-	@TOKENIZERS_PARALLELISM=false \
-	 PYTHONPATH=. \
-	 	$(CONDA) run -n shakespeare python -O gpt/cli.py train $(OPT)
+train:  ## run the training program
+	@$(MAKE) run OPT="python -O gpt/train.py $(OPT)"
 
 rm_dataset:  ## remove the cached dataset
 	@rm -rf wikipedia_ds

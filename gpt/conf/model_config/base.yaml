@@ -1,0 +1,13 @@
+flash: true
+weight_tying: false
+n_epochs: 1
+p_dropout: 0.0
+lr: 0.0001
+accumulate_grad_batches: 1
+batch_size: ???
+
+one_cycle_scheduler: false
+one_cycle_config:
+  pct_start: 0.3
+  div_factor: 25
+  final_div_factor: 10000

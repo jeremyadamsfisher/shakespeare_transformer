@@ -1,0 +1,9 @@
+log_periodicity: 500
+profile: false
+disable_wandb: false
+load_from: null
+save_to: null
+dirty: false
+model_config: ???
+compile: false
+n_articles: null # All articles

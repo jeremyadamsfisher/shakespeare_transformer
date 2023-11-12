@@ -61,3 +61,42 @@ def summarize(model, config: GptConfig, dm: L.LightningDataModule):
     first_example = dm.decode(first_example)[:100]
     logger.info(f"example batch (decoded): {first_example}")
     logger.info(f"config: {config}")
+
+
+def check_for_repo_versioned_without_uncommited_changes():
+    """If the current commit has unstaged/uncommited changes or lacks a version
+    tag, throw an exception."""
+    import git
+
+    try:
+        repo = git.Repo(search_parent_directories=True)
+    except git.exc.InvalidGitRepositoryError:
+        return False
+
+    if not repo.head.is_valid():
+        raise Exception("The current directory is not part of a Git repository.")
+
+    for tag in repo.tags:
+        if tag.commit.hexsha == repo.head.commit.hexsha:
+            if re.match(r"v\d+\.\d+\.\d+", tag.name):
+                break
+    else:
+        raise Exception("No version tag found in the current commit!")
+
+    if repo.index.diff(None):
+        raise Exception("Uncommitted changes!")
+
+
+def get_model(config):
+    from gpt import config as C
+
+    return {
+        "baby": C.gpt_baby,
+        "small": C.gpt3_small,
+        "small_char": C.gpt3_small_char,
+        "small_char_a100": C.gpt3_small_char_a100,
+        "small_char_one_cycle": C.gpt3_small_char_one_cycle,
+        "small_char_one_cycle_v2": C.gpt3_small_char_one_cycle_v2,
+        "mini_v0": C.gpt_mini_v0,
+        "mini_v1": C.gpt_mini_v1,
+    }[config.replace("-", "_").lower()]

@@ -1,1 +1,8 @@
 .git
+wikipedia_ds
+wandb
+lightning_logs
+docs
+csv_logs
+.vscode
+.cog
