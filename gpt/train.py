@@ -1,39 +1,128 @@
 import os
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
 import pytorch_lightning as L
-from loguru import logger
+import torch
+import torch.nn as nn
+from einops import rearrange
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers.csv_logs import CSVLogger
+from torch.nn import functional as F
 
 import wandb
 from gpt import PROJECT_ID, VERSION
 from gpt.config import GptConfig
+from gpt.model import Gpt
+from gpt.utils import get_run_name, run_manager
 
 
-def get_run_name(load_from: Optional[str]):
-    if load_from:
-        return Path(load_from).parent.name
-    else:
-        return f"run-v{VERSION}-{uuid4()}"
+class GptLightning(L.LightningModule):
+    def __init__(self, config, compile=True):
+        super().__init__()
+        self.config = config
+        model = Gpt(config)
+        if compile:
+            model = torch.compile(model, mode="reduce-overhead")
+        self.model = model
+        self.save_hyperparameters(config.dict())
 
+    def forward(self, *args, **kwargs):
+        return self.model.forward(*args, **kwargs)
 
-class LogGenerationPeriodically(L.Callback):
-    def __init__(self, decoder, log_periodicity, wandb_logger=None):
-        self.log_periodicity = log_periodicity
-        self.decoder = decoder
-        self.wandb_logger = wandb_logger
+    def step(self, batch):
+        xb, yb = batch
+        logits = self.forward(xb)
+        B, T, C = logits.shape
+        assert C == self.config.vocab_size
+        return F.cross_entropy(
+            rearrange(logits, "b t c -> (b t) c"),
+            rearrange(yb, "b t -> (b t)"),
+        )
 
-    def on_train_batch_start(self, trainer, model, _b, batch_idx):
-        if batch_idx % self.log_periodicity == 0 and trainer.global_rank == 0:
-            output = model.generate()
-            output = self.decoder(output).replace("\n", " ")
-            if self.wandb_logger:
-                columns = ["generation"]
-                data = [[output]]
-                self.wandb_logger.log_text("trn_generation", columns=columns, data=data)
-            logger.info("generation: {}", output)
+    def training_step(self, batch, batch_idx):
+        loss = self.step(batch)
+        self.log("trn_loss", loss, sync_dist=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self.step(batch)
+        self.log("tst_loss", loss, sync_dist=True)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.config.lr)
+        if self.config.one_cycle_scheduler is False:
+            return optimizer
+        else:
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": torch.optim.lr_scheduler.OneCycleLR(
+                        optimizer,
+                        max_lr=self.config.lr,
+                        total_steps=self.trainer.estimated_stepping_batches,
+                        pct_start=self.config.one_cycle_config.pct_start,
+                        div_factor=self.config.one_cycle_config.div_factor,
+                        final_div_factor=self.config.one_cycle_config.final_div_factor,
+                    ),
+                    "interval": "step",
+                    "frequency": 1,  # Update the LR every step
+                    "monitor": "tst_loss",  # Not relevant for OneCycleLR
+                    "strict": True,  # Doesn't need to be strict because the monitor is irrelevant
+                },
+            }
+
+    @torch.no_grad()
+    def generate(self, idxs=None, max_new_tokens: Optional[int] = None):
+        """Generate a sequence of tokens from the model."""
+
+        if max_new_tokens is None:
+            max_new_tokens = self.config.block_size
+        if idxs is None:
+            idxs = torch.zeros((1, 1), dtype=torch.long, device=self.device)
+        for _ in range(max_new_tokens):
+            # Our position embedding has a maximum length, so if the input is
+            # longer than the block size, then crop it.
+            idxs_cropped = idxs[:, -self.config.block_size :]
+            assert idxs_cropped.shape[0] == 1
+            assert idxs_cropped.shape[1] <= self.config.block_size
+            # Get the model output
+            logits = self(idxs_cropped)
+            assert logits.shape[0] == 1
+            assert idxs_cropped.shape[1] <= self.config.block_size
+            assert logits.shape[2] == self.config.vocab_size
+            # The model predicts logits for the probabilities for all the tokens,
+            # i.e.: a shifted version of the input with the new token in the final
+            # "time" position. We only need this last position.
+            logits = logits[:, -1, :]
+            assert logits.shape == (1, self.config.vocab_size)
+            # Use these logits to create a probability distribution and
+            # sample from it.
+            probs = F.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+            # Finally, append it to the current sequence
+            idxs = torch.cat([idxs, idx_next], dim=1)  # (B,T+1)
+            # ...and repeat
+        # strip the new line and remove singleton dimension
+        idxs = idxs[0, 1:]
+        return idxs
+
+    @staticmethod
+    def _init_weights(module):
+        """Stolen from nanoGPT. TODO: understand this better."""
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+    def init_weights(self):
+        self.apply(self._init_weights)
 
 
 def train(
@@ -46,48 +135,40 @@ def train(
     load_from=None,
     save_to=None,
 ):
-    name = get_run_name(load_from)
-    manager = (
-        nullcontext
-        if disable_wandb
-        else lambda: wandb.init(
-            project=PROJECT_ID,
-            config={**config.dict()},
-            name=name,
-            id=name,
-            resume=bool(load_from),
-        )
-    )
-    with manager():
+    """Train a GPT model.
+
+    Args:
+        model: GPT model
+        config: GPT config
+        dm: GPT data module
+        log_periodicity: how often to log a generation
+        profile: whether to profile the training
+        disable_wandb: whether to disable wandb
+        load_from: path to a checkpoint to load from
+        save_to: path to save checkpoints to
+
+    Returns:
+        Trained GPT model
+    """
+    with run_manager(disable_wandb, load_from) as name:
         if load_from is None:
             model.init_weights()
 
         dm.prepare_data()
-        dm.setup()
+        dm.setup("fit")
 
-        n_params = sum(param.numel() for param in model.parameters())
-        n_tokens = len(dm.X_trn) * config.block_size
-        logger.info(f"num. parameters: {n_params:,d}")
-        logger.info(f"num. tokens: {n_tokens:,d}")
-        logger.info(
-            f"tokens/parameters: {n_tokens/n_params:.1f} "
-            f"(chinchilla-optimal is 20/1)"
-        )
+        summarize(model, config, dm)
 
-        example, _ = next(iter(dm.train_dataloader()))
-        first_example = example[0, :]
-        first_example = dm.decode(first_example)[:100]
-        logger.info(f"example batch (decoded): {first_example}")
-
-        wandb_logger = None if disable_wandb else L.loggers.WandbLogger()
-
+        logger_ = CSVLogger() if disable_wandb else WandbLogger()
         callbacks = [
-            LogGenerationPeriodically(dm.decode, log_periodicity, wandb_logger),
-            L.callbacks.LearningRateMonitor(logging_interval="step"),
+            LearningRateMonitor(logging_interval="step"),
+            LogGenerationPeriodically(
+                dm.decode, log_periodicity, logger_ if disable_wandb is False else None
+            ),
         ]
 
         if save_to:
-            model_cb = L.callbacks.ModelCheckpoint(
+            model_cb = ModelCheckpoint(
                 dirpath=os.path.join(save_to, name),
                 filename="{epoch}-{tst_loss:.2f}",
                 every_n_train_steps=10_000,
@@ -100,9 +181,7 @@ def train(
         trainer = L.Trainer(
             max_epochs=config.n_epochs,
             callbacks=callbacks,
-            logger=[L.loggers.csv_logs.CSVLogger("./csv_logs")]
-            if disable_wandb
-            else [wandb_logger],
+            logger=[logger_],
             val_check_interval=1000,
             accelerator="auto",
             profiler="simple" if profile else None,
@@ -111,6 +190,7 @@ def train(
             accumulate_grad_batches=config.accumulate_grad_batches,
             default_root_dir=save_to,
         )
+
         if load_from:
             trainer.fit(model, dm, ckpt_path=load_from)
         else:

@@ -48,6 +48,10 @@ def get_model(config):
     }[config.replace("-", "_").lower()]
 
 
+save_to_help = "Checkpoint directory to save to. A UUID will be added. If unspecified, do not save the checkpoint"
+load_from_help = "Checkpoint directory to load from. Please specify the UUID. If unspecified, do not load from a checkpoint"
+
+
 @app.command()
 def train(
     config: str,
@@ -55,18 +59,8 @@ def train(
     dirty: bool = False,
     disable_wandb: bool = False,
     profile: bool = False,
-    save_to: Annotated[
-        Optional[str],
-        typer.Option(
-            help="Checkpoint directory to save to. A UUID will be added. If unspecified, do not save the checkpoint"
-        ),
-    ] = None,
-    load_from: Annotated[
-        Optional[str],
-        typer.Option(
-            help="Checkpoint directory to load from. Please specify the UUID. If unspecified, do not load from a checkpoint"
-        ),
-    ] = None,
+    save_to: Annotated[Optional[str], typer.Option(help=save_to_help)] = None,
+    load_from: Annotated[Optional[str], typer.Option(help=load_from_help)] = None,
     compile: bool = False,
 ):
     # import here to avoid doing so for --help ingress
@@ -75,9 +69,9 @@ def train(
     from gpt.train import train as train_
     from gpt.wikipedia import WikipediaDataModule
 
-    if dirty is False or ast.literal_eval(
-        os.environ.get("SHAKESPEARE_TRANSFORMER_IGNORE_GIT", "False")
-    ):
+    ignore_git = os.environ.get("SHAKESPEARE_TRANSFORMER_IGNORE_GIT", "False")
+    ignore_git = ast.literal_eval(ignore_git)
+    if dirty is False or ignore_git:
         check_for_repo_versioned_without_uncommited_changes()
 
     try:
@@ -134,7 +128,7 @@ def find_lr(config: str, fname="./lr.png"):
     tuner = L.tuner.Tuner(trainer)
     model = GptLightning(model_config, compile=False)
     dm = WikipediaDataModule(model_config, profile=False)
-    dm.setup()
+    dm.setup("fit")
     model.train_dataloader = dm.train_dataloader
 
     logger.info("finding the learning rate")
