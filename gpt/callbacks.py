@@ -12,7 +12,7 @@ class LogGenerationPeriodically(L.Callback):
 
     def on_train_batch_start(self, trainer, model, _, batch_idx):
         if batch_idx % self.log_periodicity == 0 and trainer.global_rank == 0:
-            output = model.generate()
+            output = model.generate(max_new_tokens=50)
             output = self.decoder(output).replace("\n", " ")
             if self.wandb_logger:
                 columns = ["generation"]
