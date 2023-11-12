@@ -171,7 +171,7 @@ class WikipediaDataModule(L.LightningDataModule):
 
     def setup(self, stage=None):
         """Load dataset from cache directory. Re-loading from the disk is important
-        here because each process with open its own memory mapped copy of the dataset,
+        here because each process will open its own memory mapped copy of the dataset,
         preventing resource locks."""
 
         if stage != "fit":
