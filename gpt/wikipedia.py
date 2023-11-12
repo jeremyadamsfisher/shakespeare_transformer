@@ -1,3 +1,5 @@
+import gzip
+import json
 import multiprocessing as mp
 from bisect import bisect
 from functools import lru_cache
@@ -20,10 +22,18 @@ WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
 class ShiftedSequenceDataset:
-    def __init__(self, config, ds):
+    def __init__(self, config, ds, index_fp):
         self.ds = ds
         self.config = config
-        self.compute_index()
+        if index_fp.exists():
+            logger.info("loading index from disk")
+            with gzip.open(index_fp) as f:
+                self.index = json.load(f)
+        else:
+            self.compute_index()
+            logger.info("dumping index to disk")
+            with gzip.open(index_fp, "wt") as f:
+                json.dump(self.index, f)
 
     def compute_index(self):
         self.index = []
@@ -76,20 +86,21 @@ def tokenize_wikipedia_dataset(
                 tokens_batch.append(tokens)
         return {"tokens": tokens_batch}
 
-    ds = ds.map(
+    return ds.map(
         wikipedia_batch_process,
         batched=True,
         remove_columns=["text"],
+        num_proc=mp.cpu_count() - 1,
     )
-    return ds
 
 
 class WikipediaDataModule(L.LightningDataModule):
     def __init__(self, config, n_workers=mp.cpu_count(), profile=False):
         super().__init__()
         self.config = config
-        self.n_workers = n_workers
+        self.n_workers = 0 if profile else n_workers
         self.profile = profile
+        self.batch_size = config.batch_size
 
         if config.tokenizer is not None:
             from transformers import AutoTokenizer
@@ -144,11 +155,16 @@ class WikipediaDataModule(L.LightningDataModule):
             "torch", dtype=torch.long
         )
 
-        if self.profile:
-            dsx = dsx.select(range(25))
-
-        self.X_trn = ShiftedSequenceDataset(self.config, dsx["train"])
-        self.X_tst = ShiftedSequenceDataset(self.config, dsx["test"])
+        self.X_trn = ShiftedSequenceDataset(
+            self.config,
+            dsx["train"],
+            Path(WIKIPEDIA_LOCAL_CACHE) / "wikipedia-index-trn.json.gz",
+        )
+        self.X_tst = ShiftedSequenceDataset(
+            self.config,
+            dsx["test"],
+            Path(WIKIPEDIA_LOCAL_CACHE) / "wikipedia-index-tst.json.gz",
+        )
 
     def setup(self, stage=None):
         self._setup()
