@@ -63,15 +63,13 @@ def train(
     load_from: Annotated[Optional[str], typer.Option(help=load_from_help)] = None,
     compile: bool = False,
 ):
-    # import here to avoid doing so for --help ingress
-
     from gpt.train import GptLightning
     from gpt.train import train as train_
     from gpt.wikipedia import WikipediaDataModule
 
     ignore_git = os.environ.get("SHAKESPEARE_TRANSFORMER_IGNORE_GIT", "False")
     ignore_git = ast.literal_eval(ignore_git)
-    if dirty is False or ignore_git:
+    if not (dirty or ignore_git):
         check_for_repo_versioned_without_uncommited_changes()
 
     try:

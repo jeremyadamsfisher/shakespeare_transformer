@@ -242,3 +242,4 @@ csv_logs
 
 .secrets.json
 simon.sh
+service_account.json
