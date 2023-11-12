@@ -73,13 +73,9 @@ class ShiftedSequenceDataset:
             offset = i - self.index[ds_idx - 1]
         return ds_idx, offset * self.config.block_size
 
-    def get_tokens(self, i):
-        return self.ds[i]["tokens"]
-
     def __getitem__(self, i):
         ds_idx, offset = self._get_idx_and_offset(i)
-        tokens = self.get_tokens(ds_idx)
-
+        tokens = self.ds[i]["tokens"]
         x = tokens[offset : offset + self.config.block_size]
         y = tokens[offset + 1 : offset + self.config.block_size + 1]
 
@@ -154,7 +150,6 @@ class WikipediaDataModule(L.LightningDataModule):
             for _ in trange(N_ARTICLES, desc="Downloading wikipedia"):
                 row = next(iter_ds)
                 texts.append(row["text"])
-
             ds = Dataset.from_dict({"text": texts})
         else:
             ds = load_dataset(WIKIPEDIA_URI, "20220301.en", split="train")
@@ -168,7 +163,7 @@ class WikipediaDataModule(L.LightningDataModule):
             # context width of the model
             min_block_size=self.config.block_size + 1,
         )
-        dsx = ds.train_test_split(test_size=0.01)
+        dsx = ds.train_test_split(test_size=0.0025)
         dsx.save_to_disk(WIKIPEDIA_LOCAL_CACHE)
 
     def setup(self, stage=None):
