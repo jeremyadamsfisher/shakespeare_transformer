@@ -34,7 +34,7 @@ def train(cfg: Config):
         dm.prepare_data()
         dm.setup("fit")
 
-        # summarize(model, cfg, dm)
+        summarize(model, cfg, dm)
 
         logger_ = CSVLogger("./csv_logs") if cfg.disable_wandb else WandbLogger()
         callbacks = [

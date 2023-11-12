@@ -24,12 +24,9 @@ class GptLightning(L.LightningModule):
         self.model = model
         self.save_hyperparameters(config._content)
 
-    def forward(self, *args, **kwargs):
-        return self.model.forward(*args, **kwargs)
-
     def step(self, batch):
         xb, yb = batch
-        logits = self.forward(xb)
+        logits = self.model.forward(xb)
         B, T, C = logits.shape
         assert C == self.config.vocab_size
         return F.cross_entropy(
@@ -70,48 +67,6 @@ class GptLightning(L.LightningModule):
                 },
             }
 
-    @torch.no_grad()
-    def generate(self, idxs=None, max_new_tokens: Optional[int] = None):
-        """Generate a sequence of tokens from the model.
-
-        Args:
-            idxs: the initial sequence of tokens to start from
-            max_new_tokens: the maximum number of tokens to generate
-
-        Returns:
-            The generated sequence of tokens"""
-
-        if max_new_tokens is None:
-            max_new_tokens = self.config.block_size
-        if idxs is None:
-            idxs = torch.zeros((1, 1), dtype=torch.long, device=self.device)
-        for _ in range(max_new_tokens):
-            # Our position embedding has a maximum length, so if the input is
-            # longer than the block size, then crop it.
-            idxs_cropped = idxs[:, -self.config.block_size :]
-            assert idxs_cropped.shape[0] == 1
-            assert idxs_cropped.shape[1] <= self.config.block_size
-            # Get the model output
-            logits = self(idxs_cropped)
-            assert logits.shape[0] == 1
-            assert idxs_cropped.shape[1] <= self.config.block_size
-            assert logits.shape[2] == self.config.vocab_size
-            # The model predicts logits for the probabilities for all the tokens,
-            # i.e.: a shifted version of the input with the new token in the final
-            # "time" position. We only need this last position.
-            logits = logits[:, -1, :]
-            assert logits.shape == (1, self.config.vocab_size)
-            # Use these logits to create a probability distribution and
-            # sample from it.
-            probs = F.softmax(logits, dim=-1)
-            idx_next = torch.multinomial(probs, num_samples=1)
-            # Finally, append it to the current sequence
-            idxs = torch.cat([idxs, idx_next], dim=1)  # (B,T+1)
-            # ...and repeat
-        # strip the new line and remove singleton dimension
-        idxs = idxs[0, 1:]
-        return idxs
-
     @staticmethod
     def _init_weights(module):
         """Stolen from nanoGPT. TODO: understand this better."""
@@ -124,3 +79,7 @@ class GptLightning(L.LightningModule):
 
     def init_weights(self):
         self.apply(self._init_weights)
+
+    def generate(self, *args, **kwargs):
+        return self.model.generate(*args, **kwargs)
+        
