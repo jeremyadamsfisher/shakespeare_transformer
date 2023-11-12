@@ -1,9 +1,9 @@
-import os
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
+import pytorch_lightning as L
 from loguru import logger
 
 import wandb
@@ -32,11 +32,12 @@ def run_manager(disable_wandb, load_from):
     """
 
     name = get_run_name(load_from)
-    with (
+    ctx = (
         nullcontext
         if disable_wandb
         else lambda: wandb.init(project=PROJECT_ID, name=name)
-    ):
+    )
+    with ctx():
         yield name
 
 
@@ -48,9 +49,15 @@ def summarize(model, config: GptConfig, dm: L.LightningDataModule):
         config: GPT config
         dm: GPT data module
     """
+    n_params = sum(param.numel() for param in model.parameters())
+    n_tokens = len(dm.X_trn) * config.block_size
+    logger.info(f"num. parameters: {n_params:,d}")
+    logger.info(f"num. tokens: {n_tokens:,d}")
+    logger.info(
+        f"tokens/parameters: {n_tokens/n_params:.1f} (chinchilla-optimal is 20/1)"
+    )
     example, _ = next(iter(dm.train_dataloader()))
     first_example = example[0, :]
     first_example = dm.decode(first_example)[:100]
     logger.info(f"example batch (decoded): {first_example}")
-    logger.info(f"model: {model}")
     logger.info(f"config: {config}")

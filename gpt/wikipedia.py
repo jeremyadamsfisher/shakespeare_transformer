@@ -2,7 +2,6 @@ import gzip
 import json
 import multiprocessing as mp
 from bisect import bisect
-from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, Sequence
 

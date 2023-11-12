@@ -65,7 +65,7 @@ def train(
 ):
     # import here to avoid doing so for --help ingress
 
-    from gpt.lightning_module import GptLightning
+    from gpt.train import GptLightning
     from gpt.train import train as train_
     from gpt.wikipedia import WikipediaDataModule
 

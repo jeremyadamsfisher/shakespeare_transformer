@@ -6,6 +6,8 @@ from unidecode import unidecode
 
 
 class CharTokenizer:
+    """A character-level tokenizer."""
+
     def __init__(self):
         self.char2idx = {}
         self.idx2char = {}

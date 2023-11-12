@@ -1,8 +1,5 @@
 import os
-from contextlib import contextmanager, nullcontext
-from pathlib import Path
 from typing import Optional
-from uuid import uuid4
 
 import pytorch_lightning as L
 import torch
@@ -13,15 +10,18 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.loggers.csv_logs import CSVLogger
 from torch.nn import functional as F
 
-import wandb
-from gpt import PROJECT_ID, VERSION
+from gpt.callbacks import LogGenerationPeriodically
 from gpt.config import GptConfig
 from gpt.model import Gpt
-from gpt.utils import get_run_name, run_manager
+from gpt.utils import run_manager, summarize
 
 
 class GptLightning(L.LightningModule):
-    def __init__(self, config, compile=True):
+    """Training and inference layer on top of the model itself. Designed to remove
+    non-architecture code from the model itself. PyTorchLightning is a bit of a
+    grab-bag of features, so this class is a bit of a grab-bag of features too."""
+
+    def __init__(self, config: GptConfig, compile: bool = True):
         super().__init__()
         self.config = config
         model = Gpt(config)
@@ -78,7 +78,14 @@ class GptLightning(L.LightningModule):
 
     @torch.no_grad()
     def generate(self, idxs=None, max_new_tokens: Optional[int] = None):
-        """Generate a sequence of tokens from the model."""
+        """Generate a sequence of tokens from the model.
+
+        Args:
+            idxs: the initial sequence of tokens to start from
+            max_new_tokens: the maximum number of tokens to generate
+
+        Returns:
+            The generated sequence of tokens"""
 
         if max_new_tokens is None:
             max_new_tokens = self.config.block_size
@@ -126,7 +133,7 @@ class GptLightning(L.LightningModule):
 
 
 def train(
-    model,
+    model: GptLightning,
     config: GptConfig,
     dm: L.LightningDataModule,
     log_periodicity=500,
@@ -138,7 +145,7 @@ def train(
     """Train a GPT model.
 
     Args:
-        model: GPT model
+        model: GPT lightning model
         config: GPT config
         dm: GPT data module
         log_periodicity: how often to log a generation
@@ -159,7 +166,7 @@ def train(
 
         summarize(model, config, dm)
 
-        logger_ = CSVLogger() if disable_wandb else WandbLogger()
+        logger_ = CSVLogger("./csv_logs") if disable_wandb else WandbLogger()
         callbacks = [
             LearningRateMonitor(logging_interval="step"),
             LogGenerationPeriodically(
