@@ -77,6 +77,9 @@ gpt3_small_char_one_cycle_v2.one_cycle_config = OneCycleLRConfig(
     final_div_factor=1,
 )
 
+gpt3_small_char_a100 = gpt3_small_char.model_copy()
+gpt3_small_char_a100.batch_size = 512
+gpt3_small_char_a100.accumulate_grad_batches = 1
 
 # https://wandb.ai/jfisher40/gpt-shakespeare/runs/2a70mtrg/overview?workspace=user-jfisher40
 gpt_mini_v0 = GptConfig(

@@ -41,6 +41,7 @@ def get_model(config):
         "baby": C.gpt_baby,
         "small": C.gpt3_small,
         "small_char": C.gpt3_small_char,
+        "small_char_a100": C.gpt3_small_char_a100,
         "small_char_one_cycle": C.gpt3_small_char_one_cycle,
         "small_char_one_cycle_v2": C.gpt3_small_char_one_cycle_v2,
         "mini_v0": C.gpt_mini_v0,
