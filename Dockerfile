@@ -1,11 +1,6 @@
 FROM mambaorg/micromamba:jammy-cuda-11.8.0 AS base
 WORKDIR /content
-ADD env.cuda.yml env.yml ./
-RUN micromamba env update ---name base --file env.yml
-# # https://micromamba-docker.readthedocs.io/en/latest/advanced_usage.html#using-a-lockfile
-# RUN micromamba install --name base --yes --file conda-linux-64.lock \
-#  && micromamba clean --all --yes
-
-# Git not installed
-ENV SHAKESPEARE_TRANSFORMER_IGNORE_GIT=True
+ADD requirements.txt .
+RUN micromamba install -y --name base -c defaults python=3.8
+RUN micromamba run --name base python -m pip install -r requirements.txt
 ADD ./gpt ./gpt

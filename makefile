@@ -33,3 +33,6 @@ train:  ## run the training program
 
 rm_dataset:  ## remove the cached dataset
 	@rm -rf wikipedia_ds
+
+cloud_build:
+	@gcloud builds submit --config=cloudbuild.yaml .

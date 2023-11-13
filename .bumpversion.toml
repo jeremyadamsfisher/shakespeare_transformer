@@ -16,6 +16,11 @@ search = "{current_version}"
 replace = "{new_version}"
 
 [[tool.bumpversion.files]]
+filename = "cloudbuild.yaml"
+search = "jeremyadamsfisher1123/shakespeare-gpt:{current_version}"
+replace = "jeremyadamsfisher1123/shakespeare-gpt:{new_version}"
+
+[[tool.bumpversion.files]]
 filename = "gpt/__init__.py"
 search = "VERSION = \"{current_version}\""
 replace = "VERSION = \"{new_version}\""
