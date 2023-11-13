@@ -82,4 +82,3 @@ class GptLightning(L.LightningModule):
 
     def generate(self, *args, **kwargs):
         return self.model.generate(*args, **kwargs)
-        

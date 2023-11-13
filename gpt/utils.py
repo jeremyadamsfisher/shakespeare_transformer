@@ -4,9 +4,9 @@ from typing import Optional
 from uuid import uuid4
 
 import pytorch_lightning as L
+import wandb
 from loguru import logger
 
-import wandb
 from gpt import PROJECT_ID, VERSION
 from gpt.config import GptConfig
 
