@@ -8,7 +8,7 @@ import wandb
 from loguru import logger
 
 from gpt import PROJECT_ID, VERSION
-from gpt.config import GptConfig
+from gpt.config import Config
 
 
 def get_run_name(load_from: Optional[str]):
@@ -41,7 +41,7 @@ def run_manager(disable_wandb, load_from):
         yield name
 
 
-def summarize(model, config: GptConfig, dm: L.LightningDataModule):
+def summarize(model, config: Config, dm: L.LightningDataModule):
     """Summarize a GPT model.
 
     Args:
@@ -49,8 +49,9 @@ def summarize(model, config: GptConfig, dm: L.LightningDataModule):
         config: GPT config
         dm: GPT data module
     """
+    logger.info(f"config: {config}")
     n_params = sum(param.numel() for param in model.parameters())
-    n_tokens = len(dm.X_trn) * config.block_size
+    n_tokens = len(dm.X_trn) * config.model_config.block_size
     logger.info(f"num. parameters: {n_params:,d}")
     logger.info(f"num. tokens: {n_tokens:,d}")
     logger.info(
@@ -60,7 +61,7 @@ def summarize(model, config: GptConfig, dm: L.LightningDataModule):
     first_example = example[0, :]
     first_example = dm.decode(first_example)[:100]
     logger.info(f"example batch (decoded): {first_example}")
-    logger.info(f"config: {config}")
+
 
 
 def check_for_repo_versioned_without_uncommited_changes():
