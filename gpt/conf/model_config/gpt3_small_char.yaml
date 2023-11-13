@@ -1,5 +1,5 @@
 defaults:
-  - gpt_small
+  - gpt3_small
 
 tokenizer: null
 vocab_size: 75
