@@ -8,11 +8,11 @@ steps:
 
   # Build Docker image
   - name: "gcr.io/cloud-builders/docker"
-    args: ["build", "-t", "jeremyadamsfisher1123/shakespeare-gpt:0.0.35", "."]
+    args: ["build", "-t", "jeremyadamsfisher1123/shakespeare-gpt:0.0.36", "."]
 
   # Push Docker image
   - name: "gcr.io/cloud-builders/docker"
-    args: ["push", "jeremyadamsfisher1123/shakespeare-gpt:0.0.35"]
+    args: ["push", "jeremyadamsfisher1123/shakespeare-gpt:0.0.36"]
 
 availableSecrets:
   secretManager:
