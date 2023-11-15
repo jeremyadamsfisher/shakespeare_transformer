@@ -1,6 +1,7 @@
-FROM mambaorg/micromamba:jammy-cuda-11.8.0 AS base
+# This is an alternate to the Cog environment to use with cloudbuild, in case
+# the internet is too slow to push and pull the enormous docker image layers.
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 WORKDIR /content
 ADD requirements.txt .
-RUN micromamba install -y --name base -c defaults python=3.8
-RUN micromamba run --name base python -m pip install -r requirements.txt
+RUN python -m pip install -r requirements.txt && rm requirements.txt
 ADD ./gpt ./gpt

@@ -6,6 +6,10 @@ This document is a hybrid changelog/research journal to document all my modeling
 
 ## Nov 9th, 2023
 
+## v0.0.35
+
+Lots of changes to get the deployment working with docker, hopefully to get it working on vast.ai as well. Experiments getting the env working have not been successful. Now trying to base the env on one of the docker images that I expect to be cached on vastai machines.
+
 ## v0.0.28
 
 Added resumable training.

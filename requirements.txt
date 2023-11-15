@@ -1,6 +1,6 @@
 hydra-core
-torch==2.1.0
-torchvision==0.16.0
+torch
+torchvision
 pytorch-lightning==2.1.1
 einops==0.7.0
 wandb==0.16.0
