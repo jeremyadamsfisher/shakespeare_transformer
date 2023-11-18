@@ -1,5 +1,5 @@
 .PHONY: help
-DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:$(python -c "import gpt; print(gpt.VERSION)")
+DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:0.0.37
 CONDA=micromamba
 
 help:
@@ -13,10 +13,10 @@ lint:  ## clean up the source code
 	@black .
 
 build:  ## build the docker image
-	@cog build -t $(DOCKER_IMG) .
+	@cog build -t $(DOCKER_IMG)
 
 push:  ## push the docker image
-	@cog push $(DOCKER_IMG) 
+	@cog push $(DOCKER_IMG)
 
 run:  ## run something in docker
 	@cog run \
@@ -26,7 +26,7 @@ run:  ## run something in docker
 		$(OPT)
 
 poke:  ## run interactive docker shell
-	@$(MAKE) train OPT=bash
+	@$(MAKE) run OPT=bash
 
 train:  ## run the training program
 	@$(MAKE) run OPT="python -O gpt/train.py $(OPT)"

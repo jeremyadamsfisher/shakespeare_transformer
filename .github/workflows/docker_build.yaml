@@ -2,8 +2,8 @@ name: Push to DockerHub
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -12,6 +12,10 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
+      - name: Login to Dockerhub
+        run: |
+          echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login --username jeremyadamsfisher1123 --password-stdin
+
       - name: Setup Cog
         run: |
           curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/latest/download/cog_$(uname -s)_$(uname -m)"
@@ -19,5 +23,4 @@ jobs:
 
       - name: Push to DockerHub
         run: |
-          # cog push "jeremyadamsfisher1123/shakespeare-gpt:${{  github.ref_name }}"
-          cog build -t temp
+          cog push "jeremyadamsfisher1123/shakespeare-gpt:${{  github.ref_name }}"

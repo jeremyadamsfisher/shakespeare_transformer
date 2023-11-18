@@ -4,9 +4,9 @@ from typing import Optional
 from uuid import uuid4
 
 import pytorch_lightning as L
-import wandb
 from loguru import logger
 
+import wandb
 from gpt import PROJECT_ID, VERSION
 from gpt.config import Config
 
@@ -61,7 +61,6 @@ def summarize(model, config: Config, dm: L.LightningDataModule):
     first_example = example[0, :]
     first_example = dm.decode(first_example)[:100]
     logger.info(f"example batch (decoded): {first_example}")
-
 
 
 def check_for_repo_versioned_without_uncommited_changes():
