@@ -13,7 +13,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup Cog
-        uses: replicate/setup-cog@v1
+        run: |
+          curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/latest/download/cog_$(uname -s)_$(uname -m)"
+          chmod +x /usr/local/bin/cog
 
       - name: Push to DockerHub
         run: |
