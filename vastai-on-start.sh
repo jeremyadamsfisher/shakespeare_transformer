@@ -1,10 +1,12 @@
 #!/bin/env bash
 
-set -eo pipefail
-
 mkdir /shakespeare
 
-echo $GOOGLE_APPLICATION_CREDENTIALS_B64 > /shakespeare/service_account.json
+echo "export WANDB_API_KEY=$WANDB_API_KEY" >> ~/.bashrc"
+
+echo $GOOGLE_APPLICATION_CREDENTIALS_B64 \
+    | base64 --decode \
+    > /shakespeare/service_account.json
 
 echo "export GOOGLE_APPLICATION_CREDENTIALS=/shakespeare/service_account.json" >> ~/.bashrc
 

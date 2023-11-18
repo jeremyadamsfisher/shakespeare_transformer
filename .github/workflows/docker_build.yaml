@@ -26,4 +26,4 @@ jobs:
       - name: Push to DockerHub
         run: |
           cog push "jeremyadamsfisher1123/shakespeare-gpt:${{  github.ref_name }}"
-          cog push "jeremyadamsfisher1123/shakespeare-gpt:latest
+          cog push "jeremyadamsfisher1123/shakespeare-gpt:latest"
