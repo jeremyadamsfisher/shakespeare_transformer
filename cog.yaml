@@ -3,7 +3,7 @@ build:
   system_packages:
     - build-essential
   python_version: 3.8
-  python_requirements: requirements.txt
+  python_requirements: requirements.lock
   run:
     - 'git config --global --add safe.directory /src'
 predict: "gpt/predict.py:Predictor"

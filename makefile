@@ -34,5 +34,7 @@ train:  ## run the training program
 rm_dataset:  ## remove the cached dataset
 	@rm -rf wikipedia_ds
 
-cloud_build:
-	@gcloud builds submit --config=cloudbuild.yaml .
+pip_freeze: build
+	@sed -i 's/requirements.lock/requirements.txt/g' cog.yaml
+	@cog run pip freeze > requirements.lock
+	@sed -i 's/requirements.txt/requirements.lock/g' cog.yaml
