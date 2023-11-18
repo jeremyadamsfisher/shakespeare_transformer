@@ -9,3 +9,5 @@ nohup python -O gpt/train.py \
     save_to=gs://shakespeare-gpt \
     +model_config=baby \
     n_articles=100 > train.log 2>&1 &
+
+less +F train.log
