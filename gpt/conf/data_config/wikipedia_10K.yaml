@@ -1,0 +1,6 @@
+# 10K Wikipedia articles
+
+dataset_uri: gs://shakespeare-gpt/char_tokenized_wikipedia_gpt3_10K/
+tokenizer: null # Character-level tokenizer
+block_size: 2048
+n_articles: 10000

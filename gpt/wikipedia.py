@@ -17,7 +17,7 @@ from tqdm import tqdm, trange
 
 from gpt.tokenizer import CharTokenizer
 
-WIKIPEDIA_URI = "wikipedia"
+WIKIPEDIA_URI = ""
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
 
@@ -89,42 +89,18 @@ class ShiftedSequenceDataset:
         return x, y
 
 
-def tokenize_wikipedia_dataset(
-    ds,
-    tokenize: Callable[[str], Tensor],
-    min_block_size,
-):
-    """Tokenize a dataset of wikipedia articles. We need to tokenize the articles
-    before training because we need to know how many tokens are in each article
-    to index into them."""
-
-    def wikipedia_batch_process(batch: Dict[str, Sequence]) -> Dict[str, Sequence]:
-        tokens_batch = []
-        for text in batch["text"]:
-            tokens = tokenize(text)
-            if min_block_size <= len(tokens):
-                tokens_batch.append(tokens)
-        return {"tokens": tokens_batch}
-
-    return ds.map(
-        wikipedia_batch_process,
-        batched=True,
-        remove_columns=["text"],
-        num_proc=mp.cpu_count() - 1,
-    )
-
-
 class WikipediaDataModule(L.LightningDataModule):
     """Data module for wikipedia. Fairly generic and can should be able to be
     adapted for any huggingface dataset."""
 
-    def __init__(self, n_articles, config, n_workers=mp.cpu_count(), profile=False):
+    def __init__(self, config, n_workers=mp.cpu_count(), profile=False):
         super().__init__()
         self.config = config
         self.n_workers = 0 if profile else n_workers
         self.profile = profile
-        self.batch_size = config.batch_size
-        self.n_articles = n_articles
+
+        assert self.config.data_config.tokenizer == self.config.model_config.tokenizer
+        assert self.config.data_config.block_size == self.config.model_config.block_size
 
         if config.tokenizer is not None:
             from transformers import AutoTokenizer
@@ -139,35 +115,10 @@ class WikipediaDataModule(L.LightningDataModule):
             raise ValueError(f"please set vocab size to {tokenizer.vocab_size}")
 
     def prepare_data(self):
-        """Save dataset to cache directory"""
-        self.fp = os.path.join(hydra.utils.get_original_cwd(), WIKIPEDIA_LOCAL_CACHE)
-        if Path(self.fp).exists():
-            return
-
-        if self.n_articles:
-            ds_full = load_dataset(
-                WIKIPEDIA_URI, "20220301.en", split="train", streaming=True
-            )
-            texts = []
-            iter_ds = iter(ds_full)
-            for _ in trange(self.n_articles, desc="Downloading wikipedia"):
-                row = next(iter_ds)
-                texts.append(row["text"])
-            ds = Dataset.from_dict({"text": texts})
-        else:
-            ds = load_dataset(WIKIPEDIA_URI, "20220301.en", split="train")
-            ds = ds.select_columns(["text"])
-
-        logger.info("tokenizing wikipedia")
-        ds = tokenize_wikipedia_dataset(
-            ds,
-            tokenize=self.encode,
-            # We need a source block that is at least one token bigger than the
-            # context width of the model
-            min_block_size=self.config.block_size + 1,
+        """Save dataset to cache directory."""
+        return load_dataset(
+            self.config.data_config.dataset_uri, cache_dir=Path.cwd() / "dataset_cache"
         )
-        dsx = ds.train_test_split(test_size=0.0025)
-        dsx.save_to_disk(self.fp)
 
     def setup(self, stage=None):
         """Load dataset from cache directory. Re-loading from the disk is important
@@ -177,21 +128,19 @@ class WikipediaDataModule(L.LightningDataModule):
         if stage != "fit":
             return
 
-        # Idempotent and neccesary to run beforehand, so no harm in programming defensively here
-        self.prepare_data()
-
-        # Memory-map: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
-        dsx = load_from_disk(self.fp).with_format("torch", dtype=torch.long)
+        # Note that this should be an mmap if the dataset is already cached.
+        # See: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
+        ds = self.prepare_data().with_format("torch", dtype=torch.long)
 
         self.X_trn = ShiftedSequenceDataset(
             self.config,
-            dsx["train"],
-            Path(self.fp) / "wikipedia-index-trn.json.gz",
+            ds["train"],
+            Path.cwd() / "wikipedia-index-trn.json.gz",
         )
         self.X_tst = ShiftedSequenceDataset(
             self.config,
-            dsx["test"],
-            Path(self.fp) / "wikipedia-index-tst.json.gz",
+            ds["test"],
+            Path.cwd() / "wikipedia-index-tst.json.gz",
         )
 
     def train_dataloader(self):

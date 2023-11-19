@@ -6,4 +6,4 @@ save_to: null
 dirty: false
 model_config: ???
 compile: false
-n_articles: null # All articles
+data_config: ???
