@@ -245,3 +245,4 @@ simon.sh
 service_account.json
 outputs
 .cog
+dataset_cache
