@@ -52,28 +52,15 @@ def prepare_data(n_articles, dataset_uri, tokenizer, block_size):
     else:
         tokenizer = CharTokenizer()
 
+    ds = load_dataset(
+        WIKIPEDIA_URI,
+        "20220301.en",
+        split="train",
+        cache_dir=Path.cwd() / "dataset_cache",
+    ).select_columns(["text"])
+
     if n_articles:
-        ds_full = load_dataset(
-            "wikipedia",
-            "20220301.en",
-            split="train",
-            streaming=True,
-            cache_dir=Path.cwd() / "dataset_cache",
-        )
-        texts = []
-        iter_ds = iter(ds_full)
-        for _ in trange(n_articles, desc="Downloading wikipedia"):
-            row = next(iter_ds)
-            texts.append(row["text"])
-        ds = Dataset.from_dict({"text": texts})
-    else:
-        ds = load_dataset(
-            WIKIPEDIA_URI,
-            "20220301.en",
-            split="train",
-            cache_dir=Path.cwd() / "dataset_cache",
-        )
-        ds = ds.select_columns(["text"])
+        ds = ds.select(range(n_articles))
 
     ds = tokenize_wikipedia_dataset(
         ds,
