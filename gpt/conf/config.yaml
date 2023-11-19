@@ -6,4 +6,4 @@ save_to: null
 dirty: false
 model_config: ???
 compile: false
-data_config: ???
+data_config: wikipedia
