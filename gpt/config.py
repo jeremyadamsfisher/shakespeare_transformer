@@ -1,8 +1,6 @@
-import hashlib
 from dataclasses import dataclass
 from typing import Optional
 
-from gpt import tokenizer
 
 
 @dataclass
@@ -35,6 +33,7 @@ class GptConfig:
     # tokenization
     vocab_size: int
     tokenizer: Optional[str]  # None should give a character tokenization
+
 
 @dataclass
 class DatasetConfig:

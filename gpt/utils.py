@@ -11,7 +11,6 @@ import wandb
 from gpt import PROJECT_ID, VERSION
 from gpt.config import Config
 
-
 def get_run_name(load_from: Optional[str]):
     """Generate a run name for wandb. If load_from is provided, use the
     run name which is the parent directory of the checkpoint."""

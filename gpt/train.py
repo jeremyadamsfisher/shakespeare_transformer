@@ -2,7 +2,6 @@ import os
 
 import hydra
 import pytorch_lightning as L
-from loguru import logger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.loggers.csv_logs import CSVLogger
@@ -25,7 +24,7 @@ def train(cfg: Config):
         check_for_repo_versioned_without_uncommited_changes()
 
     with run_manager(cfg.disable_wandb, cfg.load_from) as name:
-        dm = WikipediaDataModule(cfg.n_articles, cfg.model_config, profile=cfg.profile)
+        dm = WikipediaDataModule(cfg, profile=cfg.profile)
         model = GptLightning(cfg.model_config, compile=cfg.compile)
 
         if cfg.load_from is None:
