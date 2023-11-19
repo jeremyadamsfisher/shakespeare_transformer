@@ -21,6 +21,21 @@ Here are some example outputs (keep in mind this is a character model, so produc
 
 Also, check out the blog post where I delve into [all the things I was wrong about regarding self-attention](https://www.jeremyafisher.com/posts/notes-on-self-attention/). Writing this codebase inspired the blog post.
 
+## Boostrapping
+
+You need to run the dataset preprocessing script BEFORE training.
+
+```
+python gpt/convert_wikipedia.py --config-fp gpt/conf/data_config/wikipedia_100K.yaml
+```
+
+Unless you have access to my bucket, you have to change the `dataset_uri` field to something else. For example, `./wikipedia-100` 
+
+Then, run the training script. You have to specify a model config and a data config
+
+```
+python -O gpt/train.py +model_config=baby ++model_config.batch_size=512 data_config=wikipedia_100
+```
 
 ## To do
 
