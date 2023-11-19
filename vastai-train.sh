@@ -2,12 +2,9 @@
 
 set -e -o pipefail
 
-echo "You may need to edit the batch size!"
+echo "Running in the background. You may need to edit the batch size! See train.log for progress."
 
 nohup python -O gpt/train.py \
-    ++model_config.batch_size=1024 \
-    save_to=gs://shakespeare-gpt \
-    +model_config=baby \
-    n_articles=100 > train.log 2>&1 &
-
-less +F train.log
+    model_config.batch_size=32 \
+    +model_config=gpt3_small_char \
+    save_to=gs://shakespeare-gpt > train.log 2>&1 &
