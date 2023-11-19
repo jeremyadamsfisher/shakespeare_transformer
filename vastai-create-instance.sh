@@ -2,9 +2,15 @@
 
 set -e -o pipefail
 
-INSTANCE=$(vastai search offers --on-demand 'gpu_name=RTX_3090 geolocation=US' --raw | jq -r 'min_by(.min_bid)')
-echo Found instance: $INSTANCE
-INSTANCE_ID=$(echo $INSTANCE | jq -r .id)
+# Check if the -m flag is set
+if [[ $1 == "-m" ]]; then
+    INSTANCE_ID=$2
+else
+    echo Automatically selecting instance...
+    INSTANCE=$(vastai search offers --on-demand 'gpu_name=RTX_3090 num_gpus=1 geolocation=US' --raw | jq -r 'min_by(.min_bid)')
+    echo Found instance: $INSTANCE
+    INSTANCE_ID=$(echo $INSTANCE | jq -r .id)
+fi
 
 vastai create instance $INSTANCE_ID \
     --image jeremyadamsfisher1123/shakespeare-gpt \
