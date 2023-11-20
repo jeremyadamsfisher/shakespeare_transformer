@@ -28,6 +28,12 @@ def get_rank_zero_or_single_gpu():
     """Return whether the current process is the rank zero process."""
     return os.environ.get("LOCAL_RANK", "0") == "0"
 
+def rank_zero_only(f):
+    if get_rank_zero_or_single_gpu():
+        return f
+    else:
+        return lambda *args, **kwargs: None
+
 @contextmanager
 def run_manager(disable_wandb, load_from):
     """Return a context manager for running the model and determining
@@ -49,7 +55,7 @@ def run_manager(disable_wandb, load_from):
     else:
         yield name
 
-
+@rank_zero_only
 def summarize(model, config: Config, dm: L.LightningDataModule):
     """Summarize a GPT model.
 
