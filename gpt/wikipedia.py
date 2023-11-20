@@ -44,7 +44,7 @@ class WikipediaDataModule(L.LightningDataModule):
         if n_workers is None:
             if profile:
                 self.n_workers = 0
-            elif get_rank_zero_or_single_gpu():
+            elif config.distributed:
                 self.n_workers = 1
             else:
                 self.n_workers = min((mp.cpu_count()-1, 16))

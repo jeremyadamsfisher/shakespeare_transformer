@@ -52,3 +52,4 @@ class Config:
     model_config: GptConfig
     compile: bool
     data_config: "DatasetConfig"
+    distributed: bool
