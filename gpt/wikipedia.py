@@ -25,10 +25,8 @@ class ShiftedSequenceDataset:
 
     def __getitem__(self, i):
         tokens = self.ds[i]["tokens"]
-        x, y = tokens[1:], tokens[:-1]
-
+        x, y = tokens[:-1], tokens[1:]
         assert len(x) == len(y) == self.config.model_config.block_size
-
         return x, y
 
 
@@ -63,9 +61,7 @@ class WikipediaDataModule(L.LightningDataModule):
             return load_from_disk(WIKIPEDIA_LOCAL_CACHE)
         else:
             logger.info("loading dataset from google cloud")
-            ds = load_from_disk(self.config.data_config.dataset_uri)
-            ds.save_to_disk(WIKIPEDIA_LOCAL_CACHE)
-            return ds
+            return load_from_disk(self.config.data_config.dataset_uri)
 
     def setup(self, stage=None):
         """Load dataset from cache directory. Re-loading from the disk is important
