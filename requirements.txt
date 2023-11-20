@@ -1,3 +1,5 @@
+## Use make pip_freeze to update its dependencies
+
 # PyTorch, loose pins because we don't want to reinstall if the docker
 # image already has it
 torch>=2

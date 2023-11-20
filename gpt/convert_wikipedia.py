@@ -7,9 +7,8 @@ from pathlib import Path
 from typing import Callable, Dict, Sequence
 
 import yaml
-from datasets import Dataset, load_dataset
+from datasets import Sequence, Value, load_dataset
 from torch import Tensor
-from tqdm import trange
 
 from gpt.tokenizer import CharTokenizer
 
@@ -70,7 +69,10 @@ def prepare_data(n_articles, dataset_uri, tokenizer, block_size):
         blocksize=block_size + 1,
     )
 
+    ds = ds.cast_column("tokens", Sequence(feature=Value("int8")))
+
     ds = ds.train_test_split(test_size=0.0025)
+
     ds.save_to_disk(dataset_uri)
 
 
