@@ -1,3 +1,4 @@
+import os
 import multiprocessing as mp
 from pathlib import Path
 
@@ -34,11 +35,18 @@ class WikipediaDataModule(L.LightningDataModule):
     """Data module for wikipedia. Fairly generic and can should be able to be
     adapted for any huggingface dataset."""
 
-    def __init__(self, config, n_workers=min((mp.cpu_count()-1, 16)), profile=False):
+    def __init__(self, config, n_workers=None, profile=False):
         super().__init__()
         self.config = config
-        self.n_workers = 0 if profile else n_workers
         self.profile = profile
+
+        if n_workers is None:
+            if profile:
+                self.n_workers = 0
+            elif os.environ.get("NODE_RANK", "0") == "0":
+                self.n_workers = 1
+            else:
+                self.n_workers = min((mp.cpu_count()-1, 16))
 
         assert self.config.data_config.tokenizer == self.config.model_config.tokenizer
         assert self.config.data_config.block_size == self.config.model_config.block_size
