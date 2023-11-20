@@ -7,6 +7,7 @@ help:
 
 release:  ## bump patch version
 	@bump-my-version bump patch
+	@git push
 	@git push --tags
 
 lint:  ## clean up the source code
