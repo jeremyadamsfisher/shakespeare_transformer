@@ -23,6 +23,11 @@ def get_run_name(load_from: Optional[str]):
     else:
         return f"run-v{VERSION}-{uuid4()}"
 
+
+def get_rank_zero_or_single_gpu():
+    """Return whether the current process is the rank zero process."""
+    return os.environ.get("LOCAL_RANK", "0") == "0"
+
 @contextmanager
 def run_manager(disable_wandb, load_from):
     """Return a context manager for running the model and determining
@@ -33,9 +38,7 @@ def run_manager(disable_wandb, load_from):
         load_from: path to a checkpoint to load from
     """
     name = get_run_name(load_from)
-
-    single_gpu_or_rank_zero = os.environ.get("NODE_RANK", "0") == "0"
-    if single_gpu_or_rank_zero:
+    if get_rank_zero_or_single_gpu():
         ctx = (
             nullcontext
             if disable_wandb
@@ -44,7 +47,6 @@ def run_manager(disable_wandb, load_from):
         with ctx():
             yield name
     else:
-        raise ValueError
         yield name
 
 

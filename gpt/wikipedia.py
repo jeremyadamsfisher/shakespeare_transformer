@@ -9,6 +9,7 @@ from loguru import logger
 from torch.utils.data import DataLoader
 
 from gpt.tokenizer import CharTokenizer
+from gpt.utils import get_rank_zero_or_single_gpu
 
 WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
 
@@ -43,7 +44,7 @@ class WikipediaDataModule(L.LightningDataModule):
         if n_workers is None:
             if profile:
                 self.n_workers = 0
-            elif os.environ.get("NODE_RANK", "0") == "0":
+            elif get_rank_zero_or_single_gpu():
                 self.n_workers = 1
             else:
                 self.n_workers = min((mp.cpu_count()-1, 16))
