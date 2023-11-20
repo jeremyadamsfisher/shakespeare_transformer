@@ -27,8 +27,8 @@ class ShiftedSequenceDataset:
         tokens = self.ds[i]["tokens"]
         x, y = tokens[1:], tokens[:-1]
 
-        assert (len(x) == len(y) == self.config.model_config.block_size)
-        
+        assert len(x) == len(y) == self.config.model_config.block_size
+
         return x, y
 
 
@@ -66,7 +66,7 @@ class WikipediaDataModule(L.LightningDataModule):
             ds = load_from_disk(self.config.data_config.dataset_uri)
             ds.save_to_disk(WIKIPEDIA_LOCAL_CACHE)
             return ds
-        
+
     def setup(self, stage=None):
         """Load dataset from cache directory. Re-loading from the disk is important
         here because each process will open its own memory mapped copy of the dataset,
@@ -79,14 +79,8 @@ class WikipediaDataModule(L.LightningDataModule):
         # See: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
         ds = self.prepare_data().with_format("torch", dtype=torch.long)
 
-        self.X_trn = ShiftedSequenceDataset(
-            self.config,
-            ds["train"],
-        )
-        self.X_tst = ShiftedSequenceDataset(
-            self.config,
-            ds["test"],
-        )
+        self.X_trn = ShiftedSequenceDataset(self.config, ds["train"])
+        self.X_tst = ShiftedSequenceDataset(self.config, ds["test"])
 
     def train_dataloader(self):
         return DataLoader(

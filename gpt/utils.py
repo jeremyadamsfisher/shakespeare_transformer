@@ -5,11 +5,12 @@ from typing import Optional
 from uuid import uuid4
 
 import pytorch_lightning as L
+import wandb
 from loguru import logger
 
-import wandb
 from gpt import PROJECT_ID, VERSION
 from gpt.config import Config
+
 
 def get_run_name(load_from: Optional[str]):
     """Generate a run name for wandb. If load_from is provided, use the
