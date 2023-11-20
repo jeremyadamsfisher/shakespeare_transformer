@@ -1,2 +1,2 @@
-VERSION = "0.0.43"
+VERSION = "0.0.44"
 PROJECT_ID = "gpt-shakespeare"
