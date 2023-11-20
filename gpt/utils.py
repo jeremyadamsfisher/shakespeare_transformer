@@ -44,6 +44,7 @@ def run_manager(disable_wandb, load_from):
         with ctx():
             yield name
     else:
+        raise ValueError
         yield name
 
 
