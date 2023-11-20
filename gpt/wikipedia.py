@@ -34,7 +34,7 @@ class WikipediaDataModule(L.LightningDataModule):
     """Data module for wikipedia. Fairly generic and can should be able to be
     adapted for any huggingface dataset."""
 
-    def __init__(self, config, n_workers=mp.cpu_count(), profile=False):
+    def __init__(self, config, n_workers=min((mp.cpu_count()-1, 16)), profile=False):
         super().__init__()
         self.config = config
         self.n_workers = 0 if profile else n_workers

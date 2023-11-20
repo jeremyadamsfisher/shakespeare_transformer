@@ -1,3 +1,5 @@
+from math import sin
+import os
 import re
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
@@ -21,7 +23,6 @@ def get_run_name(load_from: Optional[str]):
     else:
         return f"run-v{VERSION}-{uuid4()}"
 
-
 @contextmanager
 def run_manager(disable_wandb, load_from):
     """Return a context manager for running the model and determining
@@ -31,14 +32,18 @@ def run_manager(disable_wandb, load_from):
         disable_wandb: whether to disable wandb
         load_from: path to a checkpoint to load from
     """
-
     name = get_run_name(load_from)
-    ctx = (
-        nullcontext
-        if disable_wandb
-        else lambda: wandb.init(project=PROJECT_ID, name=name)
-    )
-    with ctx():
+
+    single_gpu_or_rank_zero = os.environ.get("NODE_RANK", "0") == "0"
+    if single_gpu_or_rank_zero:
+        ctx = (
+            nullcontext
+            if disable_wandb
+            else lambda: wandb.init(project=PROJECT_ID, name=name)
+        )
+        with ctx():
+            yield name
+    else:
         yield name
 
 
