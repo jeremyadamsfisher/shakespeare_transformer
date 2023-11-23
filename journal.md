@@ -6,7 +6,7 @@
 This document is a hybrid changelog/research journal to document all my modeling and infrastructure choices.
 
 
-## Nov 20th
+## Nov 20-23th
 
 ### v0.0.47
 
@@ -23,11 +23,12 @@ Really good results, qualitatively:
 
 Running `gpt/inference.pt` gives GREAT results. Adding it to the readme.
 
-Let's see if can get the last bit of training done locally to exercise resumability
 
 Fix an issue where the model was being compiled (due to it  being the default in the `GptLightning` constructor), but it was NOT compiled during training. Solution was to prevent it from being compiled during inference. Made a note of it in the [PyTorch Lightning GH](https://github.com/Lightning-AI/lightning/issues/17120#issuecomment-1824815091).
 
 Training resumption looks like its working as well. I refactored the data download script to use `gsutil` because I don't trust huggingface datasets to download in the quickest manner. It removes some generality but eh...
+
+Let's see if can get the last bit of training done locally to exercise resumability: https://wandb.ai/jfisher40/gpt-shakespeare/runs/ho2rgbg7
 
 ## Nov 9th, 2023
 
