@@ -1,16 +1,41 @@
 # Research journal
 
+
 [Weights and Biases](https://wandb.ai/jfisher40/gpt-shakespeare?workspace=user-jfisher40)
 
 This document is a hybrid changelog/research journal to document all my modeling and infrastructure choices.
 
+
+## Nov 20th
+
+### v0.0.47
+
+Running on all of wikipedia: https://wandb.ai/jfisher40/gpt-shakespeare/runs/3oky6flm/workspace?workspace=user-jfisher40
+
+Killed slightly before finishing all of wikipedia b/c I'm not sure if it would save the checkpoint from the last bit ([`ModelCheckpoint` callback API is confusing.](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html))
+
+Final loss: 0.775
+
+Really good results, qualitatively:
+> a stupid, but too far too water-friendly pierce wo 
+> standard rally category theorem, now referring to
+> these pieces create a topical response, and the wo 
+
+Running `gpt/inference.pt` gives GREAT results. Adding it to the readme.
+
+Let's see if can get the last bit of training done locally to exercise resumability
+
+Fix an issue where the model was being compiled (due to it  being the default in the `GptLightning` constructor), but it was NOT compiled during training. Solution was to prevent it from being compiled during inference. Made a note of it in the [PyTorch Lightning GH](https://github.com/Lightning-AI/lightning/issues/17120#issuecomment-1824815091).
+
+Training resumption looks like its working as well. I refactored the data download script to use `gsutil` because I don't trust huggingface datasets to download in the quickest manner. It removes some generality but eh...
+
 ## Nov 9th, 2023
 
-## v0.0.35
+### v0.0.35
 
 Lots of changes to get the deployment working with docker, hopefully to get it working on vast.ai as well. Experiments getting the env working have not been successful. Now trying to base the env on one of the docker images that I expect to be cached on vastai machines.
 
-## v0.0.28
+### v0.0.28
 
 Added resumable training.
 
@@ -18,7 +43,7 @@ I think we're ready for VastAI.
 
 Let's give ourselves a challenge of training on all of wikipedia.
 
-## v0.0.27
+### v0.0.27
 
 Get `torch.compile` working in a docker container with about 4 iterations/second with gpt3-small-char. Needs a bit more work, specifically to patch in the wandb credentials, etc. This is a good project so we can make sure the docker image works before renting out a vastai instance. 
 
@@ -55,7 +80,7 @@ I should try 10x the learning rate.
 
 ## Nov 8th, 2023
 
-## v0.0.24
+### v0.0.24
 
 Running gpt3-small-one-cycle-v2: https://wandb.ai/jfisher40/gpt-shakespeare/runs/sejest2n/overview?workspace=user-jfisher40
 
@@ -65,7 +90,7 @@ Looks like the loss was highest when learning rate was 8e-4.
 
 Running gpt3-small-char with the learning rate suggested by the power law computation earlier (0.00025)
 
-## v0.0.23
+### v0.0.23
 
 Increased batch size to 4 with 32 gradient accumulation steps (i.e., simulated batch size of 128). Increased LR to 2e-4 for the one-cycle policy.
 
@@ -87,7 +112,7 @@ Final loss: 1.133
 
 Added `gpt3-small-one-cycle-v2` with higher learning rate.
 
-## v0.0.22
+### v0.0.22
 
 Batching gm3-small increases from 2.5 to 3 interations/second. Using flash attention increases iterations from 3 to 6.5 iterations/second. Combined 2.6x speedup. Nice :D
 
@@ -211,7 +236,7 @@ Looks like it got keyboard interrupted by accident. I feel like this experiment 
 
 ## Nov 6th, 2023
 
-## v0.0.20
+### v0.0.20
 
 Running gpt3-small-one-cycle with minor bug fix: https://wandb.ai/jfisher40/gpt-shakespeare/runs/xkknl263
 
@@ -235,7 +260,7 @@ Added more efficient transformer ops (batched QKV and flash attention) under the
 
 Generations are way too frequent.
 
-### v0.0.19
+#### v0.0.19
 
 Ran the learning rate finder for lr_gpt3_small, looks kinda wonky:
 
@@ -250,7 +275,7 @@ TODO:
 
 Rerunning with the same learning rate, this time with learning rate logging so it's more clear what the effect of training with a scheduler.
 
-### v0.0.18
+#### v0.0.18
 
 Ran gpt3-small-one cycle: https://wandb.ai/jfisher40/gpt-shakespeare/runs/x5i0gsq7?workspace=user-jfisher40
 
@@ -281,7 +306,7 @@ TODO:
 
 ## Nov 5th, 2023 
 
-### v0.0.17
+#### v0.0.17
 
 Ran a char-gpt3-small but the loss immediately started going up: https://wandb.ai/jfisher40/gpt-shakespeare/runs/tefjimbq?workspace=user-jfisher40
 
@@ -289,7 +314,7 @@ Trying one cycle.
 
 Adding a learning rate reporter so I can keep track of that.
 
-### v0.0.16
+#### v0.0.16
 
 Removed unused code
 
@@ -303,11 +328,11 @@ Pretty good results honestly:
 
 Removed `baby` as default in the makefile. Now, we'll have to specify the config.
 
-### v0.0.15
+#### v0.0.15
 
 Added gpt3 with character tokenization.
 
-### v0.0.14
+#### v0.0.14
 
 Fixed an off-by-one issue with the number of valid blocks.
 
@@ -319,7 +344,7 @@ Running `gpt3-small`: https://wandb.ai/jfisher40/gpt-shakespeare/runs/ar581m1u
 
 Training loss is stagnant. Let's retry with character tokenization.
 
-### v0.0.13
+#### v0.0.13
 
 Passed the block to the model, then created the shifted sequence within the model code. Still getting 9-10 iterations/second. Reverting.
 
@@ -329,7 +354,7 @@ Tokens blocks are now non-overlapping. The previous method re-used tokens within
 
 Added more wikipedia articles to increase the total number of 
 
-### v0.0.12
+#### v0.0.12
 
 Did something, generation is immediately better:
 
@@ -343,7 +368,7 @@ Tried a few optimizations:
 - Running with [assertions disabled](https://stackoverflow.com/questions/1273211/disable-assertions-in-python). This gives us 9-10 iterations per second.
 - Couldn't get `torch.compile` and triton working :\
 
-### v0.0.11
+#### v0.0.11
 
 Add `lru_cache` in front of the pre-chunked tokens for speed?
 
@@ -355,7 +380,7 @@ Running an interactive session, it looks like my data is garbage! No wonder it w
 '`g/\\^~q|\\1 \\g(|\\|g<3p1|j1y y1b|6~ky@ ~0^~~ b|\\1 \\g(|\\|g<3p1|j1y y1b|6~ky@ ~00gky<g|\\qf|_3\\1g0|\\1 \\g|/~p`~(|\\|]3p,~p|^~p,\\q|gky<_jy fyq^|@3,<\\qb0|(|1k~|q\\,~|3]|g~6~p\\ |p3b\\ |q\\6b|gky<g0|g1|\\1 \\g(|\\|g/~fygk|1j^_3\\10|(|1k~|q\\,~|3]|g~6~p\\ |j?g?|q\\6b|gky<g001p\\'
 ```
 
-### v0.0.10
+#### v0.0.10
 
 Ensmallening dataset by 10x (240h to 24h).
 
@@ -365,7 +390,7 @@ Getting 6-7 iterations per second.
 
 Intermediate results look terrible.
 
-### v0.0.9
+#### v0.0.9
 
 Parsing the [profiling logs](https://wandb.ai/jfisher40/gpt-shakespeare/runs/2m93vv6q/logs?workspace=user-jfisher40) show that all time was spent in the `val_next` and `train_dataloader_next` calls. Perhaps 
 
@@ -379,7 +404,7 @@ Potential improvements/speedups:
 
 Running `gpt_mini_v0`: https://wandb.ai/jfisher40/gpt-shakespeare/runs/27efuwbt
 
-## v0.0.8
+### v0.0.8
 
 Added a variety of features:
 - `--dirty` flag to prevent runs with uncommited files
@@ -391,9 +416,9 @@ Added a variety of features:
 Notes:
 - Very bottlenecked by dataloader (should I reduce processes?)
 
-## October 27th, 2023
+### October 27th, 2023
 
-### v0.0.0
+#### v0.0.0
 
 Resuscitated the project, added very hacky wikipedia data loading. (Only 1 token/article was used.)
 

@@ -25,7 +25,8 @@ run:  ## run something in docker
 		-e PYTHONPATH=. \
 		-e TOKENIZERS_PARALLELISM=false \
 		-e "WANDB_API_KEY=$$(cat .secrets.json | jq -r .WANDB_API_KEY)" \
-		$(OPT)
+		-e GOOGLE_APPLICATION_CREDENTIALS=./service_account.json \
+		bash -c "gcloud auth activate-service-account --key-file=./service_account.json && $(OPT)"
 
 poke:  ## run interactive docker shell
 	@$(MAKE) run OPT=bash
@@ -40,3 +41,6 @@ pip_freeze: build
 	@sed -i 's/requirements.lock/requirements.txt/g' cog.yaml
 	@cog run pip freeze > requirements.lock
 	@sed -i 's/requirements.txt/requirements.lock/g' cog.yaml
+
+inference:  ## run the inference program
+	@$(MAKE) run OPT="python -O gpt/inference.py $(OPT)"

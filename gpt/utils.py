@@ -1,4 +1,3 @@
-from math import sin
 import os
 import re
 from contextlib import contextmanager, nullcontext
@@ -7,11 +6,22 @@ from typing import Optional
 from uuid import uuid4
 
 import pytorch_lightning as L
-import wandb
 from loguru import logger
 
+import wandb
 from gpt import PROJECT_ID, VERSION
 from gpt.config import Config
+
+
+def restore_config(node):
+    """Restore the config from a checkpoint, since it gets mangled by PyTorch Lightning."""
+    if isinstance(node, dict):
+        return {k: restore_config(v) for k, v in node.items()}
+    elif isinstance(node, (list, tuple)):
+        return [restore_config(x) for x in node]
+    else:
+        # See: https://github.com/omry/omegaconf/blob/master/omegaconf/nodes.py#L21
+        return getattr(node, "_val", node)
 
 
 def get_run_name(load_from: Optional[str]):
@@ -28,11 +38,13 @@ def get_rank_zero_or_single_gpu():
     """Return whether the current process is the rank zero process."""
     return os.environ.get("LOCAL_RANK", "0") == "0"
 
+
 def rank_zero_only(f):
     if get_rank_zero_or_single_gpu():
         return f
     else:
         return lambda *args, **kwargs: None
+
 
 @contextmanager
 def run_manager(disable_wandb, load_from):
@@ -54,6 +66,7 @@ def run_manager(disable_wandb, load_from):
             yield name
     else:
         yield name
+
 
 @rank_zero_only
 def summarize(model, config: Config, dm: L.LightningDataModule):

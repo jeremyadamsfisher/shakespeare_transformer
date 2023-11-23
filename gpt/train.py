@@ -1,7 +1,9 @@
 import os
+from datetime import timedelta
 
 import hydra
 import pytorch_lightning as L
+import torch
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.loggers.csv_logs import CSVLogger
@@ -25,7 +27,10 @@ def train(cfg: Config):
 
     with run_manager(cfg.disable_wandb, cfg.load_from) as name:
         dm = WikipediaDataModule(cfg, profile=cfg.profile)
-        model = GptLightning(cfg.model_config, compile=cfg.compile)
+        model = GptLightning(cfg.model_config)
+
+        if cfg.compile:
+            model = torch.compile(model)
 
         if cfg.load_from is None:
             model.init_weights()
@@ -47,10 +52,11 @@ def train(cfg: Config):
             model_cb = ModelCheckpoint(
                 dirpath=os.path.join(cfg.save_to, name),
                 filename="{epoch}-{tst_loss:.2f}",
-                every_n_train_steps=10_000,
                 save_top_k=1,
                 mode="min",
                 monitor="tst_loss",
+                train_time_interval=timedelta(minutes=15),
+                save_on_train_epoch_end=True,
             )
             callbacks.append(model_cb)
 

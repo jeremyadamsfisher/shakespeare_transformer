@@ -1,6 +1,7 @@
-import os
+import shutil
 import multiprocessing as mp
 from pathlib import Path
+from subprocess import check_call
 
 import pytorch_lightning as L
 import torch
@@ -9,12 +10,11 @@ from loguru import logger
 from torch.utils.data import DataLoader
 
 from gpt.tokenizer import CharTokenizer
-from gpt.utils import get_rank_zero_or_single_gpu
 
-WIKIPEDIA_LOCAL_CACHE = "wikipedia_ds"
+WIKIPEDIA_LOCAL_CACHE = "./wikipedia_ds/"
 
 
-class ShiftedSequenceDataset:
+class ShiftedSequenceDataset(torch.utils.data.Dataset):
     """A dataset that returns a block of tokens and a paired block of tokens
     shifted by one."""
 
@@ -47,7 +47,7 @@ class WikipediaDataModule(L.LightningDataModule):
             elif config.distributed:
                 self.n_workers = 1
             else:
-                self.n_workers = min((mp.cpu_count()-1, 16))
+                self.n_workers = min((mp.cpu_count() - 1, 16))
 
         assert self.config.data_config.tokenizer == self.config.model_config.tokenizer
         assert self.config.data_config.block_size == self.config.model_config.block_size
@@ -66,11 +66,30 @@ class WikipediaDataModule(L.LightningDataModule):
 
     def prepare_data(self):
         if Path(WIKIPEDIA_LOCAL_CACHE).exists():
-            logger.info("loading dataset from disk")
-            return load_from_disk(WIKIPEDIA_LOCAL_CACHE)
-        else:
-            logger.info("loading dataset from google cloud")
-            return load_from_disk(self.config.data_config.dataset_uri)
+            logger.info("dataset already exists on disk")
+            return
+        
+        logger.info("downloading dataset")
+        cmd = (
+            "gsutil",
+            "-m",
+            "cp",
+            "-r",
+            self.config.data_config.dataset_uri,
+            ".",
+        )
+        logger.info("running command: {}", " ".join(cmd))
+        check_call(cmd)
+        logger.info("finished downloading dataset")
+
+        logger.info("moving dataset to local cache")
+        dir_name = Path(self.config.data_config.dataset_uri).name
+        shutil.move(
+            dir_name,
+            WIKIPEDIA_LOCAL_CACHE
+        )
+        logger.info("finished moving dataset to local cache")
+
 
     def setup(self, stage=None):
         """Load dataset from cache directory. Re-loading from the disk is important
@@ -78,11 +97,13 @@ class WikipediaDataModule(L.LightningDataModule):
         preventing resource locks."""
 
         if stage != "fit":
+            logger.info("skipping setup for stage: {stage} (nothing to do)")
             return
 
         # Note that this should be an mmap if the dataset is already cached.
         # See: https://huggingface.co/docs/datasets/v2.14.5/en/use_with_pytorch#use-multiple-workers
-        ds = self.prepare_data().with_format("torch", dtype=torch.long)
+        ds = load_from_disk(WIKIPEDIA_LOCAL_CACHE)
+        ds = ds.with_format("torch", dtype=torch.long)
 
         self.X_trn = ShiftedSequenceDataset(self.config, ds["train"])
         self.X_tst = ShiftedSequenceDataset(self.config, ds["test"])

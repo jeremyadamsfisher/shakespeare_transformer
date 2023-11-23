@@ -1,13 +1,15 @@
-from typing import Optional
+from typing import Optional, Union
 
 import pytorch_lightning as L
 import torch
 import torch.nn as nn
 from einops import rearrange
+from loguru import logger
 from torch.nn import functional as F
 
 from gpt.config import GptConfig
 from gpt.model import Gpt
+from gpt.utils import restore_config
 
 
 class GptLightning(L.LightningModule):
@@ -15,14 +17,24 @@ class GptLightning(L.LightningModule):
     non-architecture code from the model itself. PyTorchLightning is a bit of a
     grab-bag of features, so this class is a bit of a grab-bag of features too."""
 
-    def __init__(self, config: GptConfig, compile: bool = True):
+    def __init__(self, config: Union[dict, GptConfig]):
         super().__init__()
+
+        if isinstance(config, dict):
+            # This happens when loading from a checkpoint
+            config = GptConfig(**restore_config(config))
+
         self.config = config
         model = Gpt(config)
-        if compile:
-            model = torch.compile(model, mode="reduce-overhead")
         self.model = model
-        self.save_hyperparameters(config._content)
+
+        try:
+            self.save_hyperparameters(config._content)
+        except AttributeError:
+            logger.warning(
+                "Could not save hyperparameters. "
+                "Probably just restoring and the config is a bit mangled."
+            )
 
     def step(self, batch):
         xb, yb = batch
