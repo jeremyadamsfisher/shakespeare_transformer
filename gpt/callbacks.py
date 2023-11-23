@@ -1,6 +1,8 @@
 import pytorch_lightning as L
 from loguru import logger
+
 from gpt.utils import get_rank_zero_or_single_gpu
+
 
 class LogGenerationPeriodically(L.Callback):
     """Log a generation from the model periodically."""
@@ -18,5 +20,7 @@ class LogGenerationPeriodically(L.Callback):
                 if self.wandb_logger:
                     columns = ["generation"]
                     data = [[output]]
-                    self.wandb_logger.log_text("trn_generation", columns=columns, data=data)
+                    self.wandb_logger.log_text(
+                        "trn_generation", columns=columns, data=data
+                    )
                 logger.info("generation: {}", output)

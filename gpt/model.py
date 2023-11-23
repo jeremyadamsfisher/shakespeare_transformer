@@ -16,7 +16,6 @@ class MSA(nn.Module):
         self.dropout = nn.Dropout(config.p_dropout)
         mask = torch.tril(torch.ones(config.block_size, config.block_size)) == 0
         self.register_buffer("mask", mask)
-        self.config = config
 
     def get_attention_mask(self, T):
         """Get an attention mask for a sequence of length T

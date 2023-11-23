@@ -24,7 +24,6 @@ class GptConfig:
     n_epochs: int
     p_dropout: float
     lr: float
-    test_train_split: float
     one_cycle_scheduler: bool
     one_cycle_config: OneCycleLRConfig
     accumulate_grad_batches: int
