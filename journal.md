@@ -30,6 +30,8 @@ Training resumption looks like its working as well. I refactored the data downlo
 
 Let's see if can get the last bit of training done locally to exercise resumability: https://wandb.ai/jfisher40/gpt-shakespeare/runs/ho2rgbg7
 
+It looks like resuming with a different batch size just isn't feasible. This is a pretty major constraint.
+
 ## Nov 9th, 2023
 
 ### v0.0.35
