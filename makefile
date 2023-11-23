@@ -1,5 +1,5 @@
 .PHONY: help
-DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:0.0.47
+DOCKER_IMG=jeremyadamsfisher1123/shakespeare-gpt:0.0.48
 CONDA=micromamba
 
 help:
