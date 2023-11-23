@@ -7,4 +7,4 @@ dirty: false
 model_config: ???
 compile: false
 data_config: wikipedia
-distributed: true
+distributed: false
